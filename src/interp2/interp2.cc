@@ -836,35 +836,36 @@ void Thread::PushValues(const ValueTypes& types, const Values& values) {
 }
 
 void Thread::PushCall(Ref func, u32 offset) {
-  frames_.emplace_back(func, values_.size(), offset);
+  frames_.emplace_back(func, values_.size(), offset, inst_, mod_);
 }
 
 void Thread::PushCall(const DefinedFunc& func) {
-  PushCall(func.self(), func.desc().code_offset);
-  inst_ = store_.UnsafeGet<Instance>(func.instance());
-  mod_ = store_.UnsafeGet<Module>(inst_->module());
+  inst_ = store_.UnsafeGet<Instance>(func.instance()).get();
+  mod_ = store_.UnsafeGet<Module>(inst_->module()).get();
+  frames_.emplace_back(func.self(), values_.size(), func.desc().code_offset,
+                       inst_, mod_);
 }
 
 void Thread::PushCall(const HostFunc& func) {
-  PushCall(func.self(), 0);
-  inst_.reset();
-  mod_.reset();
+  inst_ = nullptr;
+  mod_ = nullptr;
+  frames_.emplace_back(func.self(), values_.size(), 0, inst_, mod_);
 }
 
 RunResult Thread::PopCall() {
-  inst_.reset();
-  mod_.reset();
   frames_.pop_back();
   if (frames_.empty()) {
     return RunResult::Return;
   }
 
-  // TODO: cache inst_ and mod_ in the frame?
-  auto func = store_.UnsafeGet<Func>(frames_.back().func);
-  if (auto* defined_func = dyn_cast<DefinedFunc>(func.get())) {
-    inst_ = store_.UnsafeGet<Instance>(defined_func->instance());
-    mod_ = store_.UnsafeGet<Module>(inst_->module());
+  auto& frame = frames_.back();
+  if (!frame.inst) {
+    // Returning to a HostFunc called on this thread.
+    return RunResult::Return;
   }
+
+  inst_ = frame.inst;
+  mod_ = frame.mod;
   return RunResult::Ok;
 }
 

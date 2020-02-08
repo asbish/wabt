@@ -39,6 +39,7 @@ class Object;
 class Trap;
 class DataSegment;
 class ElemSegment;
+class Module;
 class Instance;
 class Thread;
 template <typename T> class RefPtr;
@@ -361,13 +362,17 @@ struct ModuleDesc {
 //// Runtime ////
 
 struct Frame {
-  explicit Frame(Ref func, u32 values, u32 offset);
+  explicit Frame(Ref func, u32 values, u32 offset, Instance*, Module*);
 
   void Mark(Store&);
 
   Ref func;
   u32 values;  // Height of the value stack at this activation.
   u32 offset;  // Istream offset; either the return PC, or the current PC.
+
+  // Cached for convenience. Both are null if func is a HostFunc.
+  Instance* inst;
+  Module* mod;
 };
 
 template <typename T>
@@ -1025,8 +1030,8 @@ class Thread : public Object {
 
   // Cached for convenience.
   Store& store_;
-  Instance::Ptr inst_;
-  Module::Ptr mod_;
+  Instance* inst_ = nullptr;
+  Module* mod_ = nullptr;
 
   // Tracing.
   Stream* trace_stream_;

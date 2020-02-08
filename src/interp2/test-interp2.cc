@@ -317,8 +317,6 @@ TEST_F(Interp2Test, HostFunc_PingPong) {
           Trap::Ptr* out_trap) -> Result {
         auto val = params[0].Get<u32>();
         if (val < 10) {
-          // TODO: this creates a new thread; add a new API to reuse the
-          // existing thread somehow.
           return GetFuncExport(0)->Call(store_, {Value(val * 2)}, results,
                                         out_trap);
         }
@@ -334,6 +332,46 @@ TEST_F(Interp2Test, HostFunc_PingPong) {
   Values results;
   Trap::Ptr trap;
   Result result = GetFuncExport(0)->Call(store_, {Value(1)}, results, &trap);
+
+  ASSERT_EQ(Result::Ok, result);
+  EXPECT_EQ(1u, results.size());
+  EXPECT_EQ(11u, results[0].Get<u32>());
+}
+
+TEST_F(Interp2Test, HostFunc_PingPong_SameThread) {
+  // (import "" "f" (func $f (param i32) (result i32)))
+  // (func (export "g") (param i32) (result i32)
+  //   (call $f (i32.add (local.get 0) (i32.const 1))))
+  ReadModule({
+      0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x06, 0x01, 0x60,
+      0x01, 0x7f, 0x01, 0x7f, 0x02, 0x06, 0x01, 0x00, 0x01, 0x66, 0x00, 0x00,
+      0x03, 0x02, 0x01, 0x00, 0x07, 0x05, 0x01, 0x01, 0x67, 0x00, 0x01, 0x0a,
+      0x0b, 0x01, 0x09, 0x00, 0x20, 0x00, 0x41, 0x01, 0x6a, 0x10, 0x00, 0x0b,
+  });
+
+  auto thread = Thread::New(store_, {});
+
+  auto host_func = HostFunc::New(
+      store_, FuncType{{ValueType::I32}, {ValueType::I32}},
+      [&](const Values& params, Values& results,
+          Trap::Ptr* out_trap) -> Result {
+        auto val = params[0].Get<u32>();
+        if (val < 10) {
+          return GetFuncExport(0)->Call(*thread, {Value(val * 2)}, results,
+                                        out_trap);
+        }
+        results[0] = Value(val);
+        return Result::Ok;
+      });
+
+  Instantiate({host_func->self()});
+
+  // Should produce the following calls:
+  //  g(1) -> f(2) -> g(4) -> f(5) -> g(10) -> f(11) -> return 11
+
+  Values results;
+  Trap::Ptr trap;
+  Result result = GetFuncExport(0)->Call(*thread, {Value(1)}, results, &trap);
 
   ASSERT_EQ(Result::Ok, result);
   EXPECT_EQ(1u, results.size());

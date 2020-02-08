@@ -114,8 +114,12 @@ inline ExportType& ExportType::operator=(const ExportType& other) {
 }
 
 //// Frame ////
-inline Frame::Frame(Ref func, u32 values, u32 offset)
-    : func(func), values(values), offset(offset) {}
+inline Frame::Frame(Ref func,
+                    u32 values,
+                    u32 offset,
+                    Instance* inst,
+                    Module* mod)
+    : func(func), values(values), offset(offset), inst(inst), mod(mod) {}
 
 //// FreeList ////
 template <typename T>
