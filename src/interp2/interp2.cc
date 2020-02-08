@@ -548,6 +548,9 @@ Value Instance::ResolveInitExpr(Store& store, InitExpr init) {
     case InitExprKind::RefNull:
       result.Set(Ref::Null);
       break;
+
+    case InitExprKind::None:
+      WABT_UNREACHABLE;
   }
   return result;
 }

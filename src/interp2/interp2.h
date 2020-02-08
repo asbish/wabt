@@ -93,6 +93,7 @@ enum class ObjectKind {
 };
 
 enum class InitExprKind {
+  None,
   I32,
   I64,
   F32,

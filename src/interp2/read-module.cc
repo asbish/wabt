@@ -460,11 +460,13 @@ Result BinaryReaderInterp::BeginGlobal(Index index, Type type, bool mutable_) {
   GlobalType global_type{type, ToMutability(mutable_)};
   module_.globals.push_back(GlobalDesc{global_type, InitExpr{}});
   global_types_.push_back(global_type);
+  init_expr_.kind = InitExprKind::None;
   return Result::Ok;
 }
 
 ValueType BinaryReaderInterp::GetType(InitExpr init) {
   switch (init_expr_.kind) {
+    case InitExprKind::None:       return ValueType::Void;
     case InitExprKind::I32:        return ValueType::I32;
     case InitExprKind::I64:        return ValueType::I64;
     case InitExprKind::F32:        return ValueType::F32;
@@ -595,6 +597,7 @@ Result BinaryReaderInterp::BeginElemSegment(Index index,
   desc.mode = ToSegmentMode(flags);
   desc.table_index = table_index;
   module_.elems.push_back(desc);
+  init_expr_.kind = InitExprKind::None;
   return Result::Ok;
 }
 
@@ -660,6 +663,7 @@ Result BinaryReaderInterp::BeginDataSegment(Index index,
   desc.mode = ToSegmentMode(flags);
   desc.memory_index = memory_index;
   module_.datas.push_back(desc);
+  init_expr_.kind = InitExprKind::None;
   return Result::Ok;
 }
 
