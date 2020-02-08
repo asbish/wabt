@@ -50,6 +50,8 @@ template <typename T> T IntOr(T lhs, T rhs) { return lhs | rhs; }
 template <typename T> T IntXor(T lhs, T rhs) { return lhs ^ rhs; }
 template <typename T> T IntShl(T lhs, T rhs) { return lhs << ShiftMask(rhs); }
 template <typename T> T IntShr(T lhs, T rhs) { return lhs >> ShiftMask(rhs); }
+template <typename T> T IntMin(T lhs, T rhs) { return std::min(lhs, rhs); }
+template <typename T> T IntMax(T lhs, T rhs) { return std::max(lhs, rhs); }
 template <typename T> T IntAndNot(T lhs, T rhs) { return lhs & ~rhs; }
 template <typename T> T IntAvgr(T lhs, T rhs) { return (lhs + rhs + 1) / 2; }
 

@@ -1398,6 +1398,10 @@ RunResult Thread::StepInternal(Trap::Ptr* out_trap) {
     case O::I8X16Sub:          return DoSimdBinop<u8x16>(Sub<u8>);
     case O::I8X16SubSaturateS: return DoSimdBinop<u8x16>(IntSubSat<s8>);
     case O::I8X16SubSaturateU: return DoSimdBinop<u8x16>(IntSubSat<u8>);
+    case O::I8X16MinS:         return DoSimdBinop<u8x16>(IntMin<s8>);
+    case O::I8X16MinU:         return DoSimdBinop<u8x16>(IntMin<u8>);
+    case O::I8X16MaxS:         return DoSimdBinop<u8x16>(IntMax<s8>);
+    case O::I8X16MaxU:         return DoSimdBinop<u8x16>(IntMax<u8>);
 
     case O::I16X8Neg:          return DoSimdUnop<u16x8>(Neg<u16>);
     case O::I16X8AnyTrue:      return DoSimdIsTrue<u16x8, 1>();
@@ -1412,6 +1416,10 @@ RunResult Thread::StepInternal(Trap::Ptr* out_trap) {
     case O::I16X8SubSaturateS: return DoSimdBinop<u16x8>(IntSubSat<s16>);
     case O::I16X8SubSaturateU: return DoSimdBinop<u16x8>(IntSubSat<u16>);
     case O::I16X8Mul:          return DoSimdBinop<u16x8>(Mul<u16>);
+    case O::I16X8MinS:         return DoSimdBinop<u16x8>(IntMin<s16>);
+    case O::I16X8MinU:         return DoSimdBinop<u16x8>(IntMin<u16>);
+    case O::I16X8MaxS:         return DoSimdBinop<u16x8>(IntMax<s16>);
+    case O::I16X8MaxU:         return DoSimdBinop<u16x8>(IntMax<u16>);
 
     case O::I32X4Neg:          return DoSimdUnop<u32x4>(Neg<u32>);
     case O::I32X4AnyTrue:      return DoSimdIsTrue<u32x4, 1>();
@@ -1422,6 +1430,10 @@ RunResult Thread::StepInternal(Trap::Ptr* out_trap) {
     case O::I32X4Add:          return DoSimdBinop<u32x4>(Add<u32>);
     case O::I32X4Sub:          return DoSimdBinop<u32x4>(Sub<u32>);
     case O::I32X4Mul:          return DoSimdBinop<u32x4>(Mul<u32>);
+    case O::I32X4MinS:         return DoSimdBinop<u32x4>(IntMin<s32>);
+    case O::I32X4MinU:         return DoSimdBinop<u32x4>(IntMin<u32>);
+    case O::I32X4MaxS:         return DoSimdBinop<u32x4>(IntMax<s32>);
+    case O::I32X4MaxU:         return DoSimdBinop<u32x4>(IntMax<u32>);
 
     case O::I64X2Neg:          return DoSimdUnop<u64x2>(Neg<u64>);
     case O::I64X2Shl:          return DoSimdShift<u64x2>(IntShl<u64>);
@@ -1429,6 +1441,7 @@ RunResult Thread::StepInternal(Trap::Ptr* out_trap) {
     case O::I64X2ShrU:         return DoSimdShift<u64x2>(IntShr<u64>);
     case O::I64X2Add:          return DoSimdBinop<u64x2>(Add<u64>);
     case O::I64X2Sub:          return DoSimdBinop<u64x2>(Sub<u64>);
+    case O::I64X2Mul:          return DoSimdBinop<u64x2>(Mul<u64>);
 
     case O::F32X4Abs:          return DoSimdUnop<f32x4>(FloatAbs<f32>);
     case O::F32X4Neg:          return DoSimdUnop<f32x4>(Neg<f32>);
