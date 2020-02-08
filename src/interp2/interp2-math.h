@@ -28,6 +28,23 @@
 namespace wabt {
 namespace interp2 {
 
+template <
+    typename T,
+    typename std::enable_if<!std::is_floating_point<T>::value, int>::type = 0>
+T CanonNaN(T val) {
+  return val;
+}
+
+template <
+    typename T,
+    typename std::enable_if<std::is_floating_point<T>::value, int>::type = 0>
+T CanonNaN(T val) {
+  if (WABT_UNLIKELY(std::isnan(val))) {
+    return std::numeric_limits<f32>::quiet_NaN();
+  }
+  return val;
+}
+
 template <typename T> T ShiftMask(T val) { return val & (sizeof(T)*8-1); }
 
 template <typename T> bool IntEqz(T val) { return val == 0; }
@@ -41,10 +58,10 @@ template <typename T> T IntClz(T val) { return Clz(val); }
 template <typename T> T IntCtz(T val) { return Ctz(val); }
 template <typename T> T IntPopcnt(T val) { return Popcount(val); }
 template <typename T> T IntNot(T val) { return ~val; }
-template <typename T> T Neg(T val) { return -val; }
-template <typename T> T Add(T lhs, T rhs) { return lhs + rhs; }
-template <typename T> T Sub(T lhs, T rhs) { return lhs - rhs; }
-template <typename T> T Mul(T lhs, T rhs) { return lhs * rhs; }
+template <typename T> T Neg(T val) { return CanonNaN(-val); }
+template <typename T> T Add(T lhs, T rhs) { return CanonNaN(lhs + rhs); }
+template <typename T> T Sub(T lhs, T rhs) { return CanonNaN(lhs - rhs); }
+template <typename T> T Mul(T lhs, T rhs) { return CanonNaN(lhs * rhs); }
 template <typename T> T IntAnd(T lhs, T rhs) { return lhs & rhs; }
 template <typename T> T IntOr(T lhs, T rhs) { return lhs | rhs; }
 template <typename T> T IntXor(T lhs, T rhs) { return lhs ^ rhs; }
@@ -55,12 +72,16 @@ template <typename T> T IntMax(T lhs, T rhs) { return std::max(lhs, rhs); }
 template <typename T> T IntAndNot(T lhs, T rhs) { return lhs & ~rhs; }
 template <typename T> T IntAvgr(T lhs, T rhs) { return (lhs + rhs + 1) / 2; }
 
-template <typename T> T EqMask(T lhs, T rhs) { return lhs == rhs ? -1 : 0; }
-template <typename T> T NeMask(T lhs, T rhs) { return lhs != rhs ? -1 : 0; }
-template <typename T> T LtMask(T lhs, T rhs) { return lhs < rhs ? -1 : 0; }
-template <typename T> T LeMask(T lhs, T rhs) { return lhs <= rhs ? -1 : 0; }
-template <typename T> T GtMask(T lhs, T rhs) { return lhs > rhs ? -1 : 0; }
-template <typename T> T GeMask(T lhs, T rhs) { return lhs >= rhs ? -1 : 0; }
+template <typename T> struct Mask { using Type = T; };
+template <> struct Mask<f32> { using Type = u32; };
+template <> struct Mask<f64> { using Type = u64; };
+
+template <typename T> typename Mask<T>::Type EqMask(T lhs, T rhs) { return lhs == rhs ? -1 : 0; }
+template <typename T> typename Mask<T>::Type NeMask(T lhs, T rhs) { return lhs != rhs ? -1 : 0; }
+template <typename T> typename Mask<T>::Type LtMask(T lhs, T rhs) { return lhs < rhs ? -1 : 0; }
+template <typename T> typename Mask<T>::Type LeMask(T lhs, T rhs) { return lhs <= rhs ? -1 : 0; }
+template <typename T> typename Mask<T>::Type GtMask(T lhs, T rhs) { return lhs > rhs ? -1 : 0; }
+template <typename T> typename Mask<T>::Type GeMask(T lhs, T rhs) { return lhs >= rhs ? -1 : 0; }
 
 template <typename T>
 T IntRotl(T lhs, T rhs) {
@@ -117,11 +138,11 @@ RunResult IntRem(T lhs, T rhs, T* out, std::string* out_msg) {
 }
 
 template <typename T> T FloatAbs(T val) { return std::abs(val); }
-template <typename T> T FloatCeil(T val) { return std::ceil(val); }
-template <typename T> T FloatFloor(T val) { return std::floor(val); }
-template <typename T> T FloatTrunc(T val) { return std::trunc(val); }
-template <typename T> T FloatNearest(T val) { return std::nearbyint(val); }
-template <typename T> T FloatSqrt(T val) { return std::sqrt(val); }
+template <typename T> T FloatCeil(T val) { return CanonNaN(std::ceil(val)); }
+template <typename T> T FloatFloor(T val) { return CanonNaN(std::floor(val)); }
+template <typename T> T FloatTrunc(T val) { return CanonNaN(std::trunc(val)); }
+template <typename T> T FloatNearest(T val) { return CanonNaN(std::nearbyint(val)); }
+template <typename T> T FloatSqrt(T val) { return CanonNaN(std::sqrt(val)); }
 template <typename T> T FloatCopysign(T lhs, T rhs) { return std::copysign(lhs, rhs); }
 
 template <typename T>
@@ -133,7 +154,7 @@ T FloatDiv(T lhs, T rhs) {
                ? std::numeric_limits<T>::quiet_NaN()
                : std::copysign(std::numeric_limits<T>::infinity(), lhs * rhs);
   }
-  return lhs / rhs;
+  return CanonNaN(lhs / rhs);
 }
 
 template <typename T>
@@ -197,8 +218,8 @@ R IntTruncSat(T val) {
 template <typename T> struct SatPromote;
 template <> struct SatPromote<s8> { using type = s32; };
 template <> struct SatPromote<s16> { using type = s32; };
-template <> struct SatPromote<u8> { using type = u32; };
-template <> struct SatPromote<u16> { using type = u32; };
+template <> struct SatPromote<u8> { using type = s32; };
+template <> struct SatPromote<u16> { using type = s32; };
 
 template <typename R, typename T>
 R Saturate(T val) {

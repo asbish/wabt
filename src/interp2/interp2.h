@@ -974,8 +974,8 @@ class Thread : public Object {
   template <typename R, typename T>
   RunResult DoReinterpret();
 
-  template <typename T, typename V = T>
-  RunResult Load(Instr, V* out, Trap::Ptr* out_trap);
+  template <typename T>
+  RunResult Load(Instr, T* out, Trap::Ptr* out_trap);
   template <typename T, typename V = T>
   RunResult DoLoad(Instr, Trap::Ptr* out_trap);
   template <typename T, typename V = T>
@@ -1002,14 +1002,14 @@ class Thread : public Object {
   template <typename R, typename T>
   RunResult DoSimdReplace(Instr);
 
-  template <typename S, typename R, typename T>
+  template <typename R, typename T>
   RunResult DoSimdUnop(UnopFunc<R, T>);
-  template <typename S, typename R, typename T>
+  template <typename R, typename T>
   RunResult DoSimdBinop(BinopFunc<R, T>);
   RunResult DoSimdBitSelect();
   template <typename S, u8 count>
   RunResult DoSimdIsTrue();
-  template <typename S, typename R, typename T>
+  template <typename R, typename T>
   RunResult DoSimdShift(BinopFunc<R, T>);
   template <typename S, typename T>
   RunResult DoSimdLoadSplat(Instr, Trap::Ptr* out_trap);

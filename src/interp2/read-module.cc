@@ -952,7 +952,7 @@ Result BinaryReaderInterp::OnLoadSplatExpr(Opcode opcode,
   CHECK_RESULT(CheckHasMemory(opcode));
   CHECK_RESULT(CheckAlign(alignment_log2, opcode.GetMemorySize()));
   CHECK_RESULT(typechecker_.OnLoad(opcode));
-  istream_.Emit(opcode, offset);
+  istream_.Emit(opcode, kMemoryIndex0, offset);
   return Result::Ok;
 }
 
@@ -1075,15 +1075,23 @@ Result BinaryReaderInterp::OnBrTableExpr(Index num_targets,
                                          Index* target_depths,
                                          Index default_target_depth) {
   CHECK_RESULT(typechecker_.BeginBrTable());
+
+  // Use the default target to find the number of values to drop and keep. All
+  // labels must be consistent, or the module wouldn't validate.
+  CHECK_RESULT(typechecker_.OnBrTableTarget(default_target_depth));
+  Index drop_count, keep_count;
+  CHECK_RESULT(
+      GetBrDropKeepCount(default_target_depth, &drop_count, &keep_count));
+
+  istream_.EmitDropKeep(drop_count, keep_count);
   istream_.Emit(Opcode::BrTable, num_targets);
 
-  for (Index i = 0; i <= num_targets; ++i) {
-    Index depth = i != num_targets ? target_depths[i] : default_target_depth;
+  for (Index i = 0; i < num_targets; ++i) {
+    Index depth = target_depths[i];
     CHECK_RESULT(typechecker_.OnBrTableTarget(depth));
-    Index drop_count, keep_count;
-    CHECK_RESULT(GetBrDropKeepCount(depth, &drop_count, &keep_count));
-    EmitBr(depth, drop_count, keep_count);
+    EmitBr(depth, 0, 0);
   }
+  EmitBr(default_target_depth, 0, 0);
 
   CHECK_RESULT(typechecker_.EndBrTable());
   return Result::Ok;
