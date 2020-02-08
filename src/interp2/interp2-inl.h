@@ -220,38 +220,23 @@ void RefPtr<T>::reset() {
 }
 
 template <typename T>
-T* RefPtr<T>::get() {
+T* RefPtr<T>::get() const {
   return obj_;
 }
 
 template <typename T>
-T* RefPtr<T>::operator->() {
+T* RefPtr<T>::operator->() const {
   return obj_;
 }
 
 template <typename T>
-T& RefPtr<T>::operator*() {
+T& RefPtr<T>::operator*() const {
   return *obj_;
 }
 
 template <typename T>
 RefPtr<T>::operator bool() const {
   return obj_ != nullptr;
-}
-
-template <typename T>
-const T* RefPtr<T>::get() const {
-  return obj_;
-}
-
-template <typename T>
-const T* RefPtr<T>::operator->() const {
-  return obj_;
-}
-
-template <typename T>
-const T& RefPtr<T>::operator*() const {
-  return *obj_;
 }
 
 template <typename T>
@@ -380,6 +365,14 @@ inline Ref Object::self() const {
   return self_;
 }
 
+inline Finalizer Object::get_finalizer() const {
+  return finalizer_;
+}
+
+inline void Object::set_finalizer(Finalizer finalizer) {
+  finalizer_ = finalizer;
+}
+
 //// Foreign ////
 // static
 inline bool Foreign::classof(const Object* obj) {
@@ -474,11 +467,8 @@ inline bool HostFunc::classof(const Object* obj) {
 }
 
 // static
-inline HostFunc::Ptr HostFunc::New(Store& store,
-                                   FuncType type,
-                                   Callback cb,
-                                   void* user_data) {
-  return store.Alloc<HostFunc>(store, type, cb, user_data);
+inline HostFunc::Ptr HostFunc::New(Store& store, FuncType type, Callback cb) {
+  return store.Alloc<HostFunc>(store, type, cb);
 }
 
 //// Table ////
@@ -721,6 +711,10 @@ inline bool Thread::classof(const Object* obj) {
 // static
 inline Thread::Ptr Thread::New(Store& store, const Options& options) {
   return store.Alloc<Thread>(store, options);
+}
+
+inline Store& Thread::store() {
+  return store_;
 }
 
 }  // namespace interp2

@@ -18,6 +18,7 @@
 #define WABT_INTERP2_H_
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -436,14 +437,10 @@ class RefPtr {
   bool empty() const;
   void reset();
 
-  T* get();
-  T* operator->();
-  T& operator*();
+  T* get() const;
+  T* operator->() const;
+  T& operator*() const;
   explicit operator bool() const;
-
-  const T* get() const;
-  const T* operator->() const;
-  const T& operator*() const;
 
   Ref ref() const;
 
@@ -480,7 +477,7 @@ union Value {
 };
 using Values = std::vector<Value>;
 
-using Finalizer = void (*)(void* user_data);
+using Finalizer = std::function<void()>;
 
 class Object {
  public:
@@ -495,14 +492,16 @@ class Object {
   ObjectKind kind() const;
   Ref self() const;
 
+  Finalizer get_finalizer() const;
+  void set_finalizer(Finalizer);
+
  protected:
   friend Store;
   explicit Object(ObjectKind);
   virtual void Mark(Store&) {}
 
   ObjectKind kind_;
-  Finalizer finalizer_ = nullptr;
-  void* user_data_ = nullptr;
+  Finalizer finalizer_;
   Ref self_ = Ref::Null;
 };
 
@@ -570,16 +569,26 @@ class Func : public Extern {
   static bool classof(const Object* obj);
   using Ptr = RefPtr<Func>;
 
-  virtual Result Call(Store&,
-                      const Values& params,
-                      Values& results,
-                      Trap::Ptr* out_trap,
-                      Stream* = nullptr) = 0;
+  Result Call(Thread& thread,
+              const Values& params,
+              Values& results,
+              Trap::Ptr* out_trap);
+
+  // Convenience function that creates new Thread.
+  Result Call(Store&,
+              const Values& params,
+              Values& results,
+              Trap::Ptr* out_trap,
+              Stream* = nullptr);
 
   const FuncType& func_type() const;
 
  protected:
   explicit Func(ObjectKind, FuncType);
+  virtual Result DoCall(Thread& thread,
+                        const Values& params,
+                        Values& results,
+                        Trap::Ptr* out_trap) = 0;
 
   FuncType type_;
 };
@@ -594,14 +603,14 @@ class DefinedFunc : public Func {
 
   Result Match(Store&, const ImportType&, Trap::Ptr* out_trap) override;
 
-  Result Call(Store&,
-              const Values& params,
-              Values& results,
-              Trap::Ptr* out_trap,
-              Stream* = nullptr) override;
-
   Ref instance() const;
   const FuncDesc& desc() const;
+
+ protected:
+  Result DoCall(Thread& thread,
+                const Values& params,
+                Values& results,
+                Trap::Ptr* out_trap) override;
 
  private:
   friend Store;
@@ -618,29 +627,26 @@ class HostFunc : public Func {
   static const ObjectKind skind = ObjectKind::HostFunc;
   using Ptr = RefPtr<HostFunc>;
 
-  using Callback = Result (*)(const Values& params,
-                              Values& results,
-                              std::string* out_msg,
-                              void* user_data);
+  using Callback = std::function<
+      Result(const Values& params, Values& results, Trap::Ptr* out_trap)>;
 
-  static HostFunc::Ptr New(Store&, FuncType, Callback, void* user_data);
+  static HostFunc::Ptr New(Store&, FuncType, Callback);
 
   Result Match(Store&, const ImportType&, Trap::Ptr* out_trap) override;
 
-  Result Call(Store&,
-              const Values& params,
-              Values& results,
-              Trap::Ptr* out_trap,
-              Stream* = nullptr) override;
+ protected:
+  Result DoCall(Thread& thread,
+                const Values& params,
+                Values& results,
+                Trap::Ptr* out_trap) override;
 
  private:
   friend Store;
   friend Thread;
-  explicit HostFunc(Store&, FuncType, Callback, void* user_data);
+  explicit HostFunc(Store&, FuncType, Callback);
   void Mark(Store&) override;
 
   Callback callback_;
-  void* user_data_;
 };
 
 class Table : public Extern {
@@ -907,6 +913,8 @@ class Thread : public Object {
   RunResult Run(Trap::Ptr* out_trap);
   RunResult Run(int num_instructions, Trap::Ptr* out_trap);
   RunResult Step(Trap::Ptr* out_trap);
+
+  Store& store();
 
  private:
   friend Store;

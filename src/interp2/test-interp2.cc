@@ -284,12 +284,10 @@ TEST_F(Interp2Test, HostFunc) {
 
   auto host_func = HostFunc::New(
       store_, FuncType{{ValueType::I32}, {ValueType::I32}},
-      [](const Values& params, Values& results, std::string* out_msg,
-         void* user_data) -> Result {
+      [](const Values& params, Values& results, Trap::Ptr* out_trap) -> Result {
         results[0] = Value(params[0].Get<u32>() + 1);
         return Result::Ok;
-      },
-      nullptr);
+      });
 
   Instantiate({host_func->self()});
 
@@ -315,25 +313,18 @@ TEST_F(Interp2Test, HostFunc_PingPong) {
 
   auto host_func = HostFunc::New(
       store_, FuncType{{ValueType::I32}, {ValueType::I32}},
-      [](const Values& params, Values& results, std::string* out_msg,
-         void* user_data) -> Result {
-        Interp2Test* self = static_cast<Interp2Test*>(user_data);
+      [&](const Values& params, Values& results,
+          Trap::Ptr* out_trap) -> Result {
         auto val = params[0].Get<u32>();
         if (val < 10) {
-          Trap::Ptr trap;
           // TODO: this creates a new thread; add a new API to reuse the
           // existing thread somehow.
-          if (Failed(self->GetFuncExport(0)->Call(
-                  self->store_, {Value(val * 2)}, results, &trap))) {
-            *out_msg = trap->message();
-            return Result::Error;
-          }
-          return Result::Ok;
+          return GetFuncExport(0)->Call(store_, {Value(val * 2)}, results,
+                                        out_trap);
         }
         results[0] = Value(val);
         return Result::Ok;
-      },
-      this);
+      });
 
   Instantiate({host_func->self()});
 

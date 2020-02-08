@@ -248,7 +248,7 @@ void Store::Mark(const RefVec& refs) {
 //// Object ////
 Object::~Object() {
   if (finalizer_) {
-    finalizer_(user_data_);
+    finalizer_();
   }
 }
 
@@ -302,6 +302,24 @@ Result Extern::MatchImpl(Store& store,
 //// Func ////
 Func::Func(ObjectKind kind, FuncType type) : Extern(kind), type_(type) {}
 
+Result Func::Call(Store& store,
+                  const Values& params,
+                  Values& results,
+                  Trap::Ptr* out_trap,
+                  Stream* trace_stream) {
+  Thread::Options options;
+  options.trace_stream = trace_stream;
+  Thread::Ptr thread = Thread::New(store, options);
+  return DoCall(*thread, params, results, out_trap);
+}
+
+Result Func::Call(Thread& thread,
+                  const Values& params,
+                  Values& results,
+                  Trap::Ptr* out_trap) {
+  return DoCall(thread, params, results, out_trap);
+}
+
 //// DefinedFunc ////
 DefinedFunc::DefinedFunc(Store& store, Ref instance, FuncDesc desc)
     : Func(skind, desc.type), instance_(instance), desc_(desc) {}
@@ -316,29 +334,24 @@ Result DefinedFunc::Match(Store& store,
   return MatchImpl(store, import_type, type_, out_trap);
 }
 
-Result DefinedFunc::Call(Store& store,
-                         const Values& params,
-                         Values& results,
-                         Trap::Ptr* out_trap,
-                         Stream* trace_stream) {
-  Thread::Options options;
-  options.trace_stream = trace_stream;
-
-  Thread::Ptr thread = Thread::New(store, options);
+Result DefinedFunc::DoCall(Thread& thread,
+                           const Values& params,
+                           Values& results,
+                           Trap::Ptr* out_trap) {
   assert(params.size() == type_.params.size());
-  thread->PushValues(type_.params, params);
-  thread->PushCall(*this);
-  RunResult result = thread->Run(out_trap);
+  thread.PushValues(type_.params, params);
+  thread.PushCall(*this);
+  RunResult result = thread.Run(out_trap);
   if (result == RunResult::Trap) {
     return Result::Error;
   }
-  thread->PopValues(type_.results, &results);
+  thread.PopValues(type_.results, &results);
   return Result::Ok;
 }
 
 //// HostFunc ////
-HostFunc::HostFunc(Store&, FuncType type, Callback callback, void* user_data)
-    : Func(skind, type), callback_(callback), user_data_(user_data) {}
+HostFunc::HostFunc(Store&, FuncType type, Callback callback)
+    : Func(skind, type), callback_(callback) {}
 
 void HostFunc::Mark(Store&) {}
 
@@ -348,17 +361,11 @@ Result HostFunc::Match(Store& store,
   return MatchImpl(store, import_type, type_, out_trap);
 }
 
-Result HostFunc::Call(Store& store,
-                      const Values& params,
-                      Values& results,
-                      Trap::Ptr* out_trap,
-                      Stream*) {
-  std::string msg;
-  Result result = callback_(params, results, &msg, user_data_);
-  if (Failed(result)) {
-    *out_trap = Trap::New(store, msg);
-  }
-  return result;
+Result HostFunc::DoCall(Thread& thread,
+                        const Values& params,
+                        Values& results,
+                        Trap::Ptr* out_trap) {
+  return callback_(params, results, out_trap);
 }
 
 //// Table ////
@@ -1512,11 +1519,10 @@ RunResult Thread::DoCall(const Func::Ptr& func, Trap::Ptr* out_trap) {
     PopValues(func_type.params, &params);
     PushCall(*host_func);
 
-    std::string msg;
     Values results(func_type.results.size());
-    TRAP_IF(Failed(host_func->callback_(params, results, &msg,
-                                        host_func->user_data_)),
-            StringPrintf("host function trapped: %s", msg.c_str()));
+    if (Failed(host_func->Call(*this, params, results, out_trap))) {
+      return RunResult::Trap;
+    }
 
     PopCall();
     PushValues(func_type.results, results);
