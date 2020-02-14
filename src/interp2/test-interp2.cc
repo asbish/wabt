@@ -192,40 +192,40 @@ TEST_F(Interp2Test, Fac_Trace) {
 
   auto buf = stream.ReleaseOutputBuffer();
   ExpectBufferStrEq(*buf,
-R"(   0| alloca 1
-   6| i32.const 1
-  12| local.set $1, 1
-  18| local.get $1
-  24| local.get $3
-  30| i32.eqz 2
-  32| br_unless @44, 0
-  44| local.get $3
-  50| i32.mul 1, 2
-  52| local.set $1, 2
-  58| local.get $2
-  64| i32.const 1
-  70| i32.sub 2, 1
-  72| local.set $2, 1
-  78| br @18
-  18| local.get $1
-  24| local.get $3
-  30| i32.eqz 1
-  32| br_unless @44, 0
-  44| local.get $3
-  50| i32.mul 2, 1
-  52| local.set $1, 2
-  58| local.get $2
-  64| i32.const 1
-  70| i32.sub 1, 1
-  72| local.set $2, 0
-  78| br @18
-  18| local.get $1
-  24| local.get $3
-  30| i32.eqz 0
-  32| br_unless @44, 1
-  38| br @84
-  84| drop_keep $2 $1
-  94| return
+R"(#0.    0: V:1  | alloca 1
+#0.    6: V:2  | i32.const 1
+#0.   12: V:3  | local.set $1, 1
+#0.   18: V:2  | local.get $1
+#0.   24: V:3  | local.get $3
+#0.   30: V:4  | i32.eqz 2
+#0.   32: V:4  | br_unless @44, 0
+#0.   44: V:3  | local.get $3
+#0.   50: V:4  | i32.mul 1, 2
+#0.   52: V:3  | local.set $1, 2
+#0.   58: V:2  | local.get $2
+#0.   64: V:3  | i32.const 1
+#0.   70: V:4  | i32.sub 2, 1
+#0.   72: V:3  | local.set $2, 1
+#0.   78: V:2  | br @18
+#0.   18: V:2  | local.get $1
+#0.   24: V:3  | local.get $3
+#0.   30: V:4  | i32.eqz 1
+#0.   32: V:4  | br_unless @44, 0
+#0.   44: V:3  | local.get $3
+#0.   50: V:4  | i32.mul 2, 1
+#0.   52: V:3  | local.set $1, 2
+#0.   58: V:2  | local.get $2
+#0.   64: V:3  | i32.const 1
+#0.   70: V:4  | i32.sub 1, 1
+#0.   72: V:3  | local.set $2, 0
+#0.   78: V:2  | br @18
+#0.   18: V:2  | local.get $1
+#0.   24: V:3  | local.get $3
+#0.   30: V:4  | i32.eqz 0
+#0.   32: V:4  | br_unless @44, 1
+#0.   38: V:3  | br @84
+#0.   84: V:3  | drop_keep $2 $1
+#0.   94: V:1  | return
 )");
 }
 
@@ -256,17 +256,17 @@ TEST_F(Interp2Test, Local_Trace) {
 
   auto buf = stream.ReleaseOutputBuffer();
   ExpectBufferStrEq(*buf,
-R"(   0| alloca 4
-   6| i32.const 0
-  12| local.set $4, 0
-  18| i64.const 1
-  28| local.set $3, 1
-  34| f32.const 2
-  40| local.set $2, 2
-  46| f64.const 3
-  56| local.set $1, 3
-  62| drop_keep $4 $0
-  72| return
+R"(#0.    0: V:0  | alloca 4
+#0.    6: V:4  | i32.const 0
+#0.   12: V:5  | local.set $4, 0
+#0.   18: V:4  | i64.const 1
+#0.   28: V:5  | local.set $3, 1
+#0.   34: V:4  | f32.const 2
+#0.   40: V:5  | local.set $2, 2
+#0.   46: V:4  | f64.const 3
+#0.   56: V:5  | local.set $1, 3
+#0.   62: V:4  | drop_keep $4 $0
+#0.   72: V:0  | return
 )");
 }
 
