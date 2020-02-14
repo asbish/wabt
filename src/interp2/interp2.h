@@ -440,6 +440,15 @@ class RefPtr {
   RefPtr& operator=(RefPtr&&);
   ~RefPtr();
 
+  template <typename U>
+  RefPtr(const RefPtr<U>&);
+  template <typename U>
+  RefPtr& operator=(const RefPtr<U>&);
+  template <typename U>
+  RefPtr(RefPtr&&);
+  template <typename U>
+  RefPtr& operator=(RefPtr&&);
+
   bool empty() const;
   void reset();
 
@@ -451,6 +460,9 @@ class RefPtr {
   Ref ref() const;
 
  private:
+  template <typename U>
+  friend class RefPtr;
+
   T* obj_;
   Store* store_;
   Store::RootList::Index root_index_;
@@ -661,7 +673,7 @@ class Table : public Extern {
   static const ObjectKind skind = ObjectKind::Table;
   using Ptr = RefPtr<Table>;
 
-  static Table::Ptr New(Store&, TableDesc);
+  static Table::Ptr New(Store&, TableType);
 
   Result Match(Store&, const ImportType&, Trap::Ptr* out_trap) override;
 
@@ -686,16 +698,16 @@ class Table : public Extern {
   // Unsafe API.
   Ref UnsafeGet(u32 offset) const;
 
-  const TableDesc& desc() const;
+  const TableType& type() const;
   const RefVec& elements() const;
   u32 size() const;
 
  private:
   friend Store;
-  explicit Table(Store&, TableDesc);
+  explicit Table(Store&, TableType);
   void Mark(Store&) override;
 
-  TableDesc desc_;
+  TableType type_;
   RefVec elements_;
 };
 
@@ -705,7 +717,7 @@ class Memory : public Extern {
   static const ObjectKind skind = ObjectKind::Memory;
   using Ptr = RefPtr<Memory>;
 
-  static Memory::Ptr New(Store&, MemoryDesc);
+  static Memory::Ptr New(Store&, MemoryType);
 
   Result Match(Store&, const ImportType&, Trap::Ptr* out_trap) override;
 
@@ -744,10 +756,10 @@ class Memory : public Extern {
 
  private:
   friend class Store;
-  explicit Memory(class Store&, MemoryDesc);
+  explicit Memory(class Store&, MemoryType);
   void Mark(class Store&) override;
 
-  MemoryDesc desc_;
+  MemoryType type_;
   Buffer data_;
   u32 pages_;
 };
@@ -758,7 +770,7 @@ class Global : public Extern {
   static const ObjectKind skind = ObjectKind::Global;
   using Ptr = RefPtr<Global>;
 
-  static Global::Ptr New(Store&, GlobalDesc, Value);
+  static Global::Ptr New(Store&, GlobalType, Value);
 
   Result Match(Store&, const ImportType&, Trap::Ptr* out_trap) override;
 
@@ -773,12 +785,14 @@ class Global : public Extern {
   T UnsafeGet() const;
   void UnsafeSet(Value);
 
+  const GlobalType& type() const;
+
  private:
   friend Store;
-  explicit Global(Store&, GlobalDesc, Value);
+  explicit Global(Store&, GlobalType, Value);
   void Mark(Store&) override;
 
-  GlobalDesc desc_;
+  GlobalType type_;
   Value value_;
 };
 
@@ -788,16 +802,16 @@ class Event : public Extern {
   static const ObjectKind skind = ObjectKind::Event;
   using Ptr = RefPtr<Event>;
 
-  static Event::Ptr New(Store&, EventDesc);
+  static Event::Ptr New(Store&, EventType);
 
   Result Match(Store&, const ImportType&, Trap::Ptr* out_trap) override;
 
  private:
   friend Store;
-  explicit Event(Store&, EventDesc);
+  explicit Event(Store&, EventType);
   void Mark(Store&) override;
 
-  EventDesc desc_;
+  EventType type_;
 };
 
 class ElemSegment {

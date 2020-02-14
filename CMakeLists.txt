@@ -317,6 +317,7 @@ set(WABT_LIBRARY_SRC
   src/interp/interp-trace.cc
 
   src/interp2/interp2.cc
+  src/interp2/interp2-util.cc
   src/interp2/istream.cc
   src/interp2/read-module.cc
 )

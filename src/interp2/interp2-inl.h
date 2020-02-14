@@ -182,6 +182,7 @@ RefPtr<T>& RefPtr<T>::operator=(const RefPtr& other) {
   obj_ = other.obj_;
   store_ = other.store_;
   root_index_ = store_ ? store_->CopyRoot(other.root_index_) : 0;
+  return *this;
 }
 
 template <typename T>
@@ -206,6 +207,43 @@ RefPtr<T>& RefPtr<T>::operator=(RefPtr&& other) {
 template <typename T>
 RefPtr<T>::~RefPtr() {
   reset();
+}
+
+template <typename T>
+template <typename U>
+RefPtr<T>::RefPtr(const RefPtr<U>& other)
+    : obj_(other.obj_), store_(other.store_) {
+  root_index_ = store_ ? store_->CopyRoot(other.root_index_) : 0;
+}
+
+template <typename T>
+template <typename U>
+RefPtr<T>& RefPtr<T>::operator=(const RefPtr<U>& other){
+  obj_ = other.obj_;
+  store_ = other.store_;
+  root_index_ = store_ ? store_->CopyRoot(other.root_index_) : 0;
+  return *this;
+}
+
+template <typename T>
+template <typename U>
+RefPtr<T>::RefPtr(RefPtr&& other)
+    : obj_(other.obj_), store_(other.store_), root_index_(other.root_index_) {
+  other.obj_ = nullptr;
+  other.store_ = nullptr;
+  other.root_index_ = 0;
+}
+
+template <typename T>
+template <typename U>
+RefPtr<T>& RefPtr<T>::operator=(RefPtr&& other) {
+  obj_ = other.obj_;
+  store_ = other.store_;
+  root_index_ = other.root_index_;
+  other.obj_ = nullptr;
+  other.store_ = nullptr;
+  other.root_index_ = 0;
+  return *this;
 }
 
 template <typename T>
@@ -482,12 +520,12 @@ inline bool Table::classof(const Object* obj) {
 }
 
 // static
-inline Table::Ptr Table::New(Store& store, TableDesc desc) {
-  return store.Alloc<Table>(store, desc);
+inline Table::Ptr Table::New(Store& store, TableType type) {
+  return store.Alloc<Table>(store, type);
 }
 
-inline const TableDesc& Table::desc() const {
-  return desc_;
+inline const TableType& Table::type() const {
+  return type_;
 }
 
 inline const RefVec& Table::elements() const {
@@ -505,8 +543,8 @@ inline bool Memory::classof(const Object* obj) {
 }
 
 // static
-inline Memory::Ptr Memory::New(interp2::Store& store, MemoryDesc desc) {
-  return store.Alloc<Memory>(store, desc);
+inline Memory::Ptr Memory::New(interp2::Store& store, MemoryType type) {
+  return store.Alloc<Memory>(store, type);
 }
 
 inline bool Memory::IsValidAccess(u32 offset, u32 addend, size_t size) const {
@@ -603,8 +641,8 @@ inline bool Global::classof(const Object* obj) {
 }
 
 // static
-inline Global::Ptr Global::New(Store& store, GlobalDesc desc, Value value) {
-  return store.Alloc<Global>(store, desc, value);
+inline Global::Ptr Global::New(Store& store, GlobalType type, Value value) {
+  return store.Alloc<Global>(store, type, value);
 }
 
 inline Value Global::Get() const {
@@ -613,7 +651,7 @@ inline Value Global::Get() const {
 
 template <typename T>
 Result Global::Get(T* out) const {
-  if (HasType<T>(desc_.type.type)) {
+  if (HasType<T>(type_.type)) {
     *out = value_.Get<T>();
     return Result::Ok;
   }
@@ -622,17 +660,21 @@ Result Global::Get(T* out) const {
 
 template <typename T>
 T Global::UnsafeGet() const {
-  RequireType<T>(desc_.type.type);
+  RequireType<T>(type_.type);
   return value_.Get<T>();
 }
 
 template <typename T>
 Result Global::Set(T val) {
-  if (desc_.type.mut == Mutability::Var && HasType<T>(desc_.type.type)) {
+  if (type_.mut == Mutability::Var && HasType<T>(type_.type)) {
     value_.Set(val);
     return Result::Ok;
   }
   return Result::Error;
+}
+
+inline const GlobalType& Global::type() const {
+  return type_;
 }
 
 //// Event ////
@@ -642,8 +684,8 @@ inline bool Event::classof(const Object* obj) {
 }
 
 // static
-inline Event::Ptr Event::New(Store& store, EventDesc desc) {
-  return store.Alloc<Event>(store, desc);
+inline Event::Ptr Event::New(Store& store, EventType type) {
+  return store.Alloc<Event>(store, type);
 }
 
 //// ElemSegment ////

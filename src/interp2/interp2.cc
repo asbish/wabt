@@ -369,8 +369,8 @@ Result HostFunc::DoCall(Thread& thread,
 }
 
 //// Table ////
-Table::Table(Store&, TableDesc desc) : Extern(skind), desc_(desc) {
-  elements_.resize(desc.type.limits.initial);
+Table::Table(Store&, TableType type) : Extern(skind), type_(type) {
+  elements_.resize(type.limits.initial);
 }
 
 void Table::Mark(Store& store) {
@@ -380,7 +380,7 @@ void Table::Mark(Store& store) {
 Result Table::Match(Store& store,
                     const ImportType& import_type,
                     Trap::Ptr* out_trap) {
-  return MatchImpl(store, import_type, desc_.type, out_trap);
+  return MatchImpl(store, import_type, type_, out_trap);
 }
 
 bool Table::IsValidRange(u32 offset, u32 size) const {
@@ -402,7 +402,7 @@ Ref Table::UnsafeGet(u32 offset) const {
 }
 
 Result Table::Set(Store& store, u32 offset, Ref ref) {
-  if (IsValidRange(offset, 1) && store.HasValueType(ref, desc_.type.element)) {
+  if (IsValidRange(offset, 1) && store.HasValueType(ref, type_.element)) {
     elements_[offset] = ref;
     return Result::Ok;
   }
@@ -412,8 +412,8 @@ Result Table::Set(Store& store, u32 offset, Ref ref) {
 Result Table::Grow(Store& store, u32 count, Ref ref) {
   size_t old_size = elements_.size();
   u32 new_size;
-  if (store.HasValueType(ref, desc_.type.element) &&
-      CanGrow(desc_.type.limits, old_size, count, &new_size)) {
+  if (store.HasValueType(ref, type_.element) &&
+      CanGrow(type_.limits, old_size, count, &new_size)) {
     elements_.resize(new_size);
     Fill(store, old_size, ref, new_size - old_size);
     return Result::Ok;
@@ -423,7 +423,7 @@ Result Table::Grow(Store& store, u32 count, Ref ref) {
 
 Result Table::Fill(Store& store, u32 offset, Ref ref, u32 size) {
   if (IsValidRange(offset, size) &&
-      store.HasValueType(ref, desc_.type.element)) {
+      store.HasValueType(ref, type_.element)) {
     std::fill(elements_.begin() + offset, elements_.begin() + offset + size,
               ref);
     return Result::Ok;
@@ -437,7 +437,7 @@ Result Table::Init(Store& store,
                    u32 src_offset,
                    u32 size) {
   if (IsValidRange(dst_offset, size) && src.IsValidRange(src_offset, size) &&
-      TypesMatch(desc_.type.element, src.desc().type)) {
+      TypesMatch(type_.element, src.desc().type)) {
     std::copy(src.elements().begin() + src_offset,
               src.elements().begin() + src_offset + size,
               elements_.begin() + dst_offset);
@@ -455,7 +455,7 @@ Result Table::Copy(Store& store,
                    u32 size) {
   if (dst.IsValidRange(dst_offset, size) &&
       src.IsValidRange(src_offset, size) &&
-      TypesMatch(dst.desc_.type.element, src.desc_.type.element)) {
+      TypesMatch(dst.type_.element, src.type_.element)) {
     std::move(src.elements_.begin() + src_offset,
               src.elements_.begin() + src_offset + size,
               dst.elements_.begin() + dst_offset);
@@ -465,10 +465,8 @@ Result Table::Copy(Store& store,
 }
 
 //// Memory ////
-Memory::Memory(class Store&, MemoryDesc desc)
-    : Extern(skind),
-      desc_(desc),
-      pages_(desc.type.limits.initial) {
+Memory::Memory(class Store&, MemoryType type)
+    : Extern(skind), type_(type), pages_(type.limits.initial) {
   data_.resize(pages_ * WABT_PAGE_SIZE);
 }
 
@@ -477,12 +475,12 @@ void Memory::Mark(class Store&) {}
 Result Memory::Match(class Store& store,
                      const ImportType& import_type,
                      Trap::Ptr* out_trap) {
-  return MatchImpl(store, import_type, desc_.type, out_trap);
+  return MatchImpl(store, import_type, type_, out_trap);
 }
 
 Result Memory::Grow(u32 count) {
   u32 new_pages;
-  if (CanGrow(desc_.type.limits, pages_, count, &new_pages)) {
+  if (CanGrow(type_.limits, pages_, count, &new_pages)) {
     pages_ = new_pages;
     data_.resize(new_pages * WABT_PAGE_SIZE);
     return Result::Ok;
@@ -556,11 +554,11 @@ Value Instance::ResolveInitExpr(Store& store, InitExpr init) {
 }
 
 //// Global ////
-Global::Global(Store& store, GlobalDesc desc, Value value)
-    : Extern(skind), desc_(desc), value_(value) {}
+Global::Global(Store& store, GlobalType type, Value value)
+    : Extern(skind), type_(type), value_(value) {}
 
 void Global::Mark(Store& store) {
-  if (IsReference(desc_.type.type)) {
+  if (IsReference(type_.type)) {
     store.Mark(value_.ref_);
   }
 }
@@ -568,11 +566,11 @@ void Global::Mark(Store& store) {
 Result Global::Match(Store& store,
                      const ImportType& import_type,
                      Trap::Ptr* out_trap) {
-  return MatchImpl(store, import_type, desc_.type, out_trap);
+  return MatchImpl(store, import_type, type_, out_trap);
 }
 
 Result Global::Set(Store& store, Ref ref) {
-  if (store.HasValueType(ref, desc_.type.type)) {
+  if (store.HasValueType(ref, type_.type)) {
     value_.Set(ref);
     return Result::Ok;
   }
@@ -584,14 +582,14 @@ void Global::UnsafeSet(Value value) {
 }
 
 //// Event ////
-Event::Event(Store&, EventDesc desc) : Extern(skind), desc_(desc) {}
+Event::Event(Store&, EventType type) : Extern(skind), type_(type) {}
 
 void Event::Mark(Store&) {}
 
 Result Event::Match(Store& store,
                     const ImportType& import_type,
                     Trap::Ptr* out_trap) {
-  return MatchImpl(store, import_type, desc_.type, out_trap);
+  return MatchImpl(store, import_type, type_, out_trap);
 }
 
 //// ElemSegment ////
@@ -667,6 +665,13 @@ Instance::Ptr Instance::Instantiate(Store& store,
   for (size_t i = 0; i < import_desc_count; ++i) {
     auto&& import_desc = mod->desc().imports[i];
     Ref extern_ref = imports[i];
+    if (extern_ref == Ref::Null) {
+      *out_trap = Trap::New(store, StringPrintf("invalid import \"%s.%s\"",
+                                                import_desc.type.module.c_str(),
+                                                import_desc.type.name.c_str()));
+      return {};
+    }
+
     Extern::Ptr extern_{store, extern_ref};
     if (Failed(extern_->Match(store, import_desc.type, out_trap))) {
       return {};
@@ -690,24 +695,24 @@ Instance::Ptr Instance::Instantiate(Store& store,
 
   // Tables.
   for (auto&& desc : mod->desc().tables) {
-    inst->tables_.push_back(Table::New(store, desc).ref());
+    inst->tables_.push_back(Table::New(store, desc.type).ref());
   }
 
   // Memories.
   for (auto&& desc : mod->desc().memories) {
-    inst->memories_.push_back(Memory::New(store, desc).ref());
+    inst->memories_.push_back(Memory::New(store, desc.type).ref());
   }
 
   // Globals.
   for (auto&& desc : mod->desc().globals) {
     inst->globals_.push_back(
-        Global::New(store, desc, inst->ResolveInitExpr(store, desc.init))
+        Global::New(store, desc.type, inst->ResolveInitExpr(store, desc.init))
             .ref());
   }
 
   // Events.
   for (auto&& desc : mod->desc().events) {
-    inst->events_.push_back(Event::New(store, desc).ref());
+    inst->events_.push_back(Event::New(store, desc.type).ref());
   }
 
   // Exports.
@@ -1626,8 +1631,10 @@ RunResult Thread::Load(Instr instr, T* out, Trap::Ptr* out_trap) {
   Memory::Ptr memory{store_, inst_->memories()[instr.imm_u32x2.fst]};
   u32 offset = Pop<u32>();
   TRAP_IF(Failed(memory->Load(offset, instr.imm_u32x2.snd, out)),
-          StringPrintf("access at %u+%u >= max value %u", offset,
-                       instr.imm_u32x2.snd, memory->ByteSize()));
+          StringPrintf("out of bounds memory access: access at %" PRIu64
+                       "+%" PRIzd " >= max value %u",
+                       u64{offset} + instr.imm_u32x2.snd, sizeof(T),
+                       memory->ByteSize()));
   return RunResult::Ok;
 }
 
@@ -1647,8 +1654,10 @@ RunResult Thread::DoStore(Instr instr, Trap::Ptr* out_trap) {
   V val = static_cast<V>(Pop<T>());
   u32 offset = Pop<u32>();
   TRAP_IF(Failed(memory->Store(offset, instr.imm_u32x2.snd, val)),
-          StringPrintf("access at %u+%u >= max value %u", offset,
-                       instr.imm_u32x2.snd, memory->ByteSize()));
+          StringPrintf("out of bounds memory access: access at %" PRIu64
+                       "+%" PRIzd " >= max value %u",
+                       u64{offset} + instr.imm_u32x2.snd, sizeof(T),
+                       memory->ByteSize()));
   return RunResult::Ok;
 }
 
