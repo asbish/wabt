@@ -15,6 +15,7 @@
  */
 
 #include <cassert>
+#include <limits>
 #include <string>
 
 namespace wabt {
@@ -50,7 +51,12 @@ inline bool TableType::classof(const ExternType* type) {
 }
 
 inline TableType::TableType(ValueType element, Limits limits)
-    : ExternType(ExternKind::Table), element(element), limits(limits) {}
+    : ExternType(ExternKind::Table), element(element), limits(limits) {
+  // Always set max.
+  if (!limits.has_max) {
+    this->limits.max = std::numeric_limits<u32>::max();
+  }
+}
 
 //// MemoryType ////
 // static
@@ -59,7 +65,12 @@ inline bool MemoryType::classof(const ExternType* type) {
 }
 
 inline MemoryType::MemoryType(Limits limits)
-    : ExternType(ExternKind::Memory), limits(limits) {}
+    : ExternType(ExternKind::Memory), limits(limits) {
+  // Always set max.
+  if (!limits.has_max) {
+    this->limits.max = WABT_MAX_PAGES;
+  }
+}
 
 //// GlobalType ////
 // static

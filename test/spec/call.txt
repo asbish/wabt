@@ -1,6 +1,8 @@
 ;;; TOOL: run-interp-spec
 ;;; STDIN_FILE: third_party/testsuite/call.wast
 (;; STDOUT ;;;
+out/test/spec/call.wast:282: assert_trap passed: call stack exhausted
+out/test/spec/call.wast:283: assert_trap passed: call stack exhausted
 out/test/spec/call.wast:299: assert_trap passed: undefined table index
 out/test/spec/call.wast:326: assert_invalid passed:
   error: type mismatch in i32.eqz, expected [i32] but got []

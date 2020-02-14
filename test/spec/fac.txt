@@ -1,5 +1,6 @@
 ;;; TOOL: run-interp-spec
 ;;; STDIN_FILE: third_party/testsuite/fac.wast
 (;; STDOUT ;;;
+out/test/spec/fac.wast:89: assert_trap passed: call stack exhausted
 6/6 tests passed.
 ;;; STDOUT ;;)

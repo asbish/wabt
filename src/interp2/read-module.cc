@@ -17,6 +17,7 @@
 #include "src/interp2/read-module.h"
 
 #include <map>
+#include <set>
 
 #include "src/binary-reader-nop.h"
 #include "src/feature.h"
@@ -303,6 +304,8 @@ class BinaryReaderInterp : public BinaryReaderNop {
   std::vector<GlobalType> global_types_;  // Includes imported and defined.
   std::vector<EventType> event_types_;    // Includes imported and defined.
 
+  std::set<std::string> export_names_;  // Used to check for duplicates.
+
   static const Index kMemoryIndex0 = 0;
 };
 
@@ -556,6 +559,14 @@ Result BinaryReaderInterp::OnExport(Index index,
                                     ExternalKind kind,
                                     Index item_index,
                                     string_view name) {
+  auto name_str = name.to_string();
+  if (export_names_.find(name_str) != export_names_.end()) {
+    PrintError("duplicate export \"" PRIstringview "\"",
+               WABT_PRINTF_STRING_VIEW_ARG(name));
+    return Result::Error;
+  }
+  export_names_.insert(name_str);
+
   std::unique_ptr<ExternType> type;
   switch (kind) {
     case ExternalKind::Func:   type = func_types_[item_index].Clone(); break;
@@ -565,7 +576,7 @@ Result BinaryReaderInterp::OnExport(Index index,
     case ExternalKind::Event:  type = event_types_[item_index].Clone(); break;
   }
   module_.exports.push_back(
-      ExportDesc{ExportType(name.to_string(), std::move(type)), item_index});
+      ExportDesc{ExportType(name_str, std::move(type)), item_index});
   return Result::Ok;
 }
 
@@ -631,6 +642,12 @@ Result BinaryReaderInterp::OnElemSegmentElemExpr_RefNull(Index segment_index) {
 
 Result BinaryReaderInterp::OnElemSegmentElemExpr_RefFunc(Index segment_index,
                                                          Index func_index) {
+  Index max_func_index = func_types_.size();
+  if (func_index >= max_func_index) {
+    PrintError("invalid func_index: %" PRIindex " (max %" PRIindex ")",
+               func_index, max_func_index);
+    return Result::Error;
+  }
   ElemDesc& elem = module_.elems.back();
   elem.elements.push_back(ElemExpr{ElemKind::RefFunc, func_index});
   return Result::Ok;
@@ -788,9 +805,9 @@ Result BinaryReaderInterp::CheckGlobal(Index global_index) {
 }
 
 Result BinaryReaderInterp::CheckDataSegment(Index data_segment_index) {
-  Index max_data_segment_index = module_.datas.size();
+  Index max_data_segment_index = module_.datas.capacity();
   if (data_segment_index >= max_data_segment_index) {
-    PrintError("invalid data_segment_index: %" PRIindex " (max %" PRIindex ")",
+    PrintError("invalid data segment index: %" PRIindex " (max %" PRIindex ")",
                data_segment_index, max_data_segment_index);
     return Result::Error;
   }
@@ -800,7 +817,7 @@ Result BinaryReaderInterp::CheckDataSegment(Index data_segment_index) {
 Result BinaryReaderInterp::CheckElemSegment(Index elem_segment_index) {
   Index max_elem_segment_index = module_.elems.size();
   if (elem_segment_index >= max_elem_segment_index) {
-    PrintError("invalid elem_segment_index: %" PRIindex " (max %" PRIindex ")",
+    PrintError("invalid elem segment index: %" PRIindex " (max %" PRIindex ")",
                elem_segment_index, max_elem_segment_index);
     return Result::Error;
   }
@@ -1079,22 +1096,23 @@ Result BinaryReaderInterp::OnBrTableExpr(Index num_targets,
                                          Index* target_depths,
                                          Index default_target_depth) {
   CHECK_RESULT(typechecker_.BeginBrTable());
-
-  // Use the default target to find the number of values to drop and keep. All
-  // labels must be consistent, or the module wouldn't validate.
-  CHECK_RESULT(typechecker_.OnBrTableTarget(default_target_depth));
   Index drop_count, keep_count;
-  CHECK_RESULT(
-      GetBrDropKeepCount(default_target_depth, &drop_count, &keep_count));
-
-  istream_.EmitDropKeep(drop_count, keep_count);
   istream_.Emit(Opcode::BrTable, num_targets);
 
   for (Index i = 0; i < num_targets; ++i) {
     Index depth = target_depths[i];
     CHECK_RESULT(typechecker_.OnBrTableTarget(depth));
+    CHECK_RESULT(GetBrDropKeepCount(depth, &drop_count, &keep_count));
+    // Emit DropKeep directly (instead of using EmitDropKeep) so the
+    // instruction has a fixed size.
+    istream_.Emit(Opcode::InterpDropKeep, drop_count, keep_count);
     EmitBr(depth, 0, 0);
   }
+  CHECK_RESULT(typechecker_.OnBrTableTarget(default_target_depth));
+  CHECK_RESULT(
+      GetBrDropKeepCount(default_target_depth, &drop_count, &keep_count));
+  // The default case doesn't need a fixed size, since it is never jumped over.
+  istream_.EmitDropKeep(drop_count, keep_count);
   EmitBr(default_target_depth, 0, 0);
 
   CHECK_RESULT(typechecker_.EndBrTable());
@@ -1253,8 +1271,10 @@ Result BinaryReaderInterp::OnLocalGetExpr(Index local_index) {
 
 Result BinaryReaderInterp::OnLocalSetExpr(Index local_index) {
   CHECK_RESULT(CheckLocal(local_index));
+  // See comment in OnLocalGetExpr above.
+  Index translated_local_index = TranslateLocalIndex(local_index);
   CHECK_RESULT(typechecker_.OnLocalSet(GetLocalType(local_index)));
-  istream_.Emit(Opcode::LocalSet, TranslateLocalIndex(local_index));
+  istream_.Emit(Opcode::LocalSet, translated_local_index);
   return Result::Ok;
 }
 

@@ -2,5 +2,6 @@
 ;;; STDIN_FILE: third_party/testsuite/proposals/multi-value/fac.wast
 ;;; ARGS*: --enable-multi-value
 (;; STDOUT ;;;
+out/test/spec/multi-value/fac.wast:109: assert_trap passed: call stack exhausted
 7/7 tests passed.
 ;;; STDOUT ;;)

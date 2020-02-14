@@ -158,7 +158,7 @@ using u32x2 = Simd<u32, 2>;
 //// Types ////
 
 using Limits = wabt::Limits;
-Result CanGrow(const Limits&, u32 old_size, u32 delta, u32* new_size);
+bool CanGrow(const Limits&, u32 old_size, u32 delta, u32* new_size);
 Result Match(const Limits& expected,
              const Limits& actual,
              std::string* out_msg);
@@ -291,7 +291,7 @@ struct LocalDesc {
 };
 
 struct FuncDesc {
-  u32 GetLocalCount() const;
+  // Includes params.
   ValueType GetLocalType(Index) const;
 
   FuncType type;
@@ -956,9 +956,9 @@ class Thread : public Object {
   explicit Thread(Store&, const Options&);
   void Mark(Store&) override;
 
-  void PushCall(Ref func, u32 offset);
-  void PushCall(const DefinedFunc&);
-  void PushCall(const HostFunc&);
+  RunResult PushCall(Ref func, u32 offset, Trap::Ptr* out_trap);
+  RunResult PushCall(const DefinedFunc&, Trap::Ptr* out_trap);
+  RunResult PushCall(const HostFunc&, Trap::Ptr* out_trap);
   RunResult PopCall();
   RunResult DoCall(const Func::Ptr&, Trap::Ptr* out_trap);
   RunResult DoReturnCall(const Func::Ptr&, Trap::Ptr* out_trap);

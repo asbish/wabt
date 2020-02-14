@@ -14,6 +14,8 @@ out/test/spec/call_indirect.wast:493: assert_trap passed: indirect call signatur
 out/test/spec/call_indirect.wast:494: assert_trap passed: indirect call signature mismatch
 out/test/spec/call_indirect.wast:500: assert_trap passed: indirect call signature mismatch
 out/test/spec/call_indirect.wast:501: assert_trap passed: indirect call signature mismatch
+out/test/spec/call_indirect.wast:556: assert_trap passed: call stack exhausted
+out/test/spec/call_indirect.wast:557: assert_trap passed: call stack exhausted
 out/test/spec/call_indirect.wast:594: assert_malformed passed:
   out/test/spec/call_indirect/call_indirect.1.wat:1:122: error: unexpected token "param", expected an expr.
   ...indirect (type $sig) (result i32) (param i32)    (i32.const 0) (i32.const ...
@@ -80,7 +82,7 @@ out/test/spec/call_indirect.wast:701: assert_malformed passed:
   ...0 funcref)(func (result i32)  (call_indirect (type $sig) (param i32) (resu...
                                     ^^^^^^^^^^^^^
 out/test/spec/call_indirect.wast:716: assert_invalid passed:
-  error: found call_indirect operator, but no table
+  error: call_indirect requires an imported or defined table.
   000001c: error: OnCallIndirectExpr callback failed
 out/test/spec/call_indirect.wast:724: assert_invalid passed:
   error: type mismatch in i32.eqz, expected [i32] but got []

@@ -868,9 +868,8 @@ class CommandRunner {
   int total() const { return total_; }
 
  private:
-  using ExternMap = std::map<std::string, Extern::Ptr>;
-  using Registry = std::map<std::string, ExternMap>;
-  using InstanceMap = std::map<std::string, Instance::Ptr>;
+  using ExportMap = std::map<std::string, Extern::Ptr>;
+  using Registry = std::map<std::string, ExportMap>;
 
   void WABT_PRINTF_FORMAT(3, 4)
       PrintError(uint32_t line_number, const char* format, ...);
@@ -879,9 +878,9 @@ class CommandRunner {
                          RunVerbosity verbose);
 
   interp2::Module::Ptr ReadModule(string_view module_filename, Errors* errors);
-  Extern::Ptr GetExtern(const std::string&, const std::string&);
+  Extern::Ptr GetImport(const std::string&, const std::string&);
   void PopulateImports(const interp2::Module::Ptr&, RefVec*);
-  void PopulateExports(const Instance::Ptr&, ExternMap*);
+  void PopulateExports(const Instance::Ptr&, ExportMap*);
 
   Result OnModuleCommand(const ModuleCommand*);
   Result OnActionCommand(const ActionCommand*);
@@ -909,9 +908,9 @@ class CommandRunner {
                               const char* desc);
 
   Store store_;
-  Registry registry_;
-  InstanceMap instances_;
-  ExternMap last_exports_;
+  Registry registry_;  // Used when importing.
+  Registry instances_;  // Used when referencing module by name in invoke.
+  ExportMap last_instance_;
   int passed_ = 0;
   int total_ = 0;
 
@@ -1027,9 +1026,9 @@ void CommandRunner::PrintError(uint32_t line_number, const char* format, ...) {
 ActionResult CommandRunner::RunAction(int line_number,
                                       const Action* action,
                                       RunVerbosity verbose) {
-  ExternMap& module = !action->module_name.empty()
-                          ? registry_[action->module_name]
-                          : last_exports_;
+  ExportMap& module = !action->module_name.empty()
+                          ? instances_[action->module_name]
+                          : last_instance_;
   Extern::Ptr extern_ = module[action->field_name];
 
   ActionResult result;
@@ -1040,7 +1039,8 @@ ActionResult CommandRunner::RunAction(int line_number,
       func->Call(store_, action->args, result.values, &result.trap,
                  s_trace_stream);
       result.types = func->func_type().results;
-      if (verbose == RunVerbosity::Verbose) {
+      if (verbose == RunVerbosity::Verbose)
+      {
         WriteCall(s_stdout_stream.get(), action->field_name, func->func_type(),
                   action->args, result.values, result.trap);
       }
@@ -1143,7 +1143,7 @@ Result CommandRunner::ReadInvalidModule(int line_number,
   WABT_UNREACHABLE;
 }
 
-Extern::Ptr CommandRunner::GetExtern(const std::string& module,
+Extern::Ptr CommandRunner::GetImport(const std::string& module,
                                      const std::string& name) {
   auto mod_iter = registry_.find(module);
   if (mod_iter != registry_.end()) {
@@ -1158,13 +1158,14 @@ Extern::Ptr CommandRunner::GetExtern(const std::string& module,
 void CommandRunner::PopulateImports(const interp2::Module::Ptr& module,
                                     RefVec* imports) {
   for (auto&& import : module->desc().imports) {
-    auto extern_ = GetExtern(import.type.module, import.type.name);
+    auto extern_ = GetImport(import.type.module, import.type.name);
     imports->push_back(extern_ ? extern_.ref() : Ref::Null);
   }
 }
 
 void CommandRunner::PopulateExports(const Instance::Ptr& instance,
-                                    ExternMap* map) {
+                                    ExportMap* map) {
+  map->clear();
   interp2::Module::Ptr module{store_, instance->module()};
   for (size_t i = 0; i < module->export_types().size(); ++i) {
     const ExportType& export_type = module->export_types()[i];
@@ -1195,9 +1196,9 @@ Result CommandRunner::OnModuleCommand(const ModuleCommand* command) {
     return Result::Error;
   }
 
-  PopulateExports(instance, &last_exports_);
+  PopulateExports(instance, &last_instance_);
   if (!command->name.empty()) {
-    instances_[command->name] = instance;
+    instances_[command->name] = last_instance_;
   }
 
   return Result::Ok;
@@ -1236,10 +1237,9 @@ Result CommandRunner::OnRegisterCommand(const RegisterCommand* command) {
       PrintError(command->line, "unknown module in register");
       return Result::Error;
     }
-    auto& extern_map = registry_[command->as];
-    PopulateExports(instance_iter->second, &extern_map);
+    registry_[command->as] = instance_iter->second;
   } else {
-    registry_[command->as] = last_exports_;
+    registry_[command->as] = last_instance_;
   }
 
   return Result::Ok;
@@ -1267,8 +1267,8 @@ Result CommandRunner::OnAssertUnlinkableCommand(
     return Result::Error;
   }
 
-  s_stdout_stream->Writef("assert_unlinkable passed: %s",
-                          trap->message().c_str());
+  PrintError(command->line, "assert_unlinkable passed: %s",
+             trap->message().c_str());
   return Result::Ok;
 }
 
@@ -1307,8 +1307,8 @@ Result CommandRunner::OnAssertUninstantiableCommand(
     return Result::Error;
   }
 
-  s_stdout_stream->Writef("assert_uninstantiable passed: %s",
-                          trap->message().c_str());
+  PrintError(command->line, "assert_uninstantiable passed: %s",
+             trap->message().c_str());
   return Result::Ok;
 }
 

@@ -161,21 +161,22 @@ Result Match(const EventType& expected,
 }
 
 //// Limits ////
-Result CanGrow(const Limits& limits, u32 old_size, u32 delta, u32* new_size) {
-  if (limits.max >= delta && old_size < limits.max - delta) {
+bool CanGrow(const Limits& limits, u32 old_size, u32 delta, u32* new_size) {
+  if (limits.max >= delta && old_size <= limits.max - delta) {
     *new_size = old_size + delta;
-    return Result::Ok;
+    return true;
   }
-  return Result::Error;
+  return false;
 }
 
 //// FuncDesc ////
 
-u32 FuncDesc::GetLocalCount() const {
-  return locals.empty() ? 0 : locals.back().end;
-}
-
 ValueType FuncDesc::GetLocalType(Index index) const {
+  if (index < type.params.size()) {
+    return type.params[index];
+  }
+  index -= type.params.size();
+
   auto iter = std::lower_bound(
       locals.begin(), locals.end(), index + 1,
       [](const LocalDesc& lhs, Index rhs) { return lhs.end < rhs; });
@@ -340,8 +341,11 @@ Result DefinedFunc::DoCall(Thread& thread,
                            Trap::Ptr* out_trap) {
   assert(params.size() == type_.params.size());
   thread.PushValues(type_.params, params);
-  thread.PushCall(*this);
-  RunResult result = thread.Run(out_trap);
+  RunResult result = thread.PushCall(*this, out_trap);
+  if (result == RunResult::Trap) {
+    return Result::Error;
+  }
+  result = thread.Run(out_trap);
   if (result == RunResult::Trap) {
     return Result::Error;
   }
@@ -757,7 +761,11 @@ Instance::Ptr Instance::Instantiate(Store& store,
         }
 
         if (Failed(result)) {
-          *out_trap = Trap::New(store, "table.init out of bounds");
+          *out_trap = Trap::New(
+              store, StringPrintf(
+                         "out of bounds table access: elem segment is "
+                         "out of bounds: [%u, %" PRIu64 ") >= max value %u",
+                         offset, u64{offset} + segment.size(), table->size()));
           return {};
         }
       }
@@ -780,7 +788,12 @@ Instance::Ptr Instance::Instantiate(Store& store,
         }
 
         if (Failed(result)) {
-          *out_trap = Trap::New(store, "memory.init out of bounds");
+          *out_trap = Trap::New(
+              store,
+              StringPrintf("out of bounds memory access: data segment is "
+                           "out of bounds: [%u, %" PRIu64 ") >= max value %u",
+                           offset, u64{offset} + segment.size(),
+                           memory->ByteSize()));
           return {};
         }
       }
@@ -843,21 +856,34 @@ void Thread::PushValues(const ValueTypes& types, const Values& values) {
   }
 }
 
-void Thread::PushCall(Ref func, u32 offset) {
+#define TRAP(msg) *out_trap = Trap::New(store_, (msg), frames_), RunResult::Trap
+#define TRAP_IF(cond, msg)     \
+  if (WABT_UNLIKELY((cond))) { \
+    return TRAP(msg);          \
+  }
+#define TRAP_UNLESS(cond, msg) TRAP_IF(!(cond), msg)
+
+RunResult Thread::PushCall(Ref func, u32 offset, Trap::Ptr* out_trap) {
+  TRAP_IF(frames_.size() == frames_.capacity(), "call stack exhausted");
   frames_.emplace_back(func, values_.size(), offset, inst_, mod_);
+  return RunResult::Ok;
 }
 
-void Thread::PushCall(const DefinedFunc& func) {
+RunResult Thread::PushCall(const DefinedFunc& func, Trap::Ptr* out_trap) {
+  TRAP_IF(frames_.size() == frames_.capacity(), "call stack exhausted");
   inst_ = store_.UnsafeGet<Instance>(func.instance()).get();
   mod_ = store_.UnsafeGet<Module>(inst_->module()).get();
   frames_.emplace_back(func.self(), values_.size(), func.desc().code_offset,
                        inst_, mod_);
+  return RunResult::Ok;
 }
 
-void Thread::PushCall(const HostFunc& func) {
+RunResult Thread::PushCall(const HostFunc& func, Trap::Ptr* out_trap) {
+  TRAP_IF(frames_.size() == frames_.capacity(), "call stack exhausted");
   inst_ = nullptr;
   mod_ = nullptr;
   frames_.emplace_back(func.self(), values_.size(), 0, inst_, mod_);
+  return RunResult::Ok;
 }
 
 RunResult Thread::PopCall() {
@@ -953,13 +979,6 @@ void Thread::Push(Ref ref) {
   values_.push_back(Value(ref));
 }
 
-#define TRAP(msg) *out_trap = Trap::New(store_, (msg), frames_), RunResult::Trap
-#define TRAP_IF(cond, msg)     \
-  if (WABT_UNLIKELY((cond))) { \
-    return TRAP(msg);          \
-  }
-#define TRAP_UNLESS(cond, msg) TRAP_IF(!(cond), msg)
-
 RunResult Thread::StepInternal(Trap::Ptr* out_trap) {
   using O = Opcode;
 
@@ -990,7 +1009,7 @@ RunResult Thread::StepInternal(Trap::Ptr* out_trap) {
       if (key >= instr.imm_u32) {
         key = instr.imm_u32;
       }
-      pc += key * 6;  // TODO: magic number
+      pc += key * 16;  // TODO: magic number
       break;
     }
 
@@ -1000,7 +1019,10 @@ RunResult Thread::StepInternal(Trap::Ptr* out_trap) {
     case O::Call: {
       Ref new_func_ref = inst_->funcs()[instr.imm_u32];
       DefinedFunc::Ptr new_func{store_, new_func_ref};
-      PushCall(new_func_ref, new_func->desc().code_offset);
+      if (PushCall(new_func_ref, new_func->desc().code_offset, out_trap) ==
+          RunResult::Trap) {
+        return RunResult::Trap;
+      }
       break;
     }
 
@@ -1041,8 +1063,8 @@ RunResult Thread::StepInternal(Trap::Ptr* out_trap) {
       break;
 
     case O::LocalSet: {
-      auto value = Pop();
-      Pick(instr.imm_u32) = value;
+      Pick(instr.imm_u32) = Pick(1);
+      Pop();
       break;
     }
 
@@ -1611,7 +1633,9 @@ RunResult Thread::DoCall(const Func::Ptr& func, Trap::Ptr* out_trap) {
 
     Values params;
     PopValues(func_type.params, &params);
-    PushCall(*host_func);
+    if (PushCall(*host_func, out_trap) == RunResult::Trap) {
+      return RunResult::Trap;
+    }
 
     Values results(func_type.results.size());
     if (Failed(host_func->Call(*this, params, results, out_trap))) {
@@ -1621,7 +1645,9 @@ RunResult Thread::DoCall(const Func::Ptr& func, Trap::Ptr* out_trap) {
     PopCall();
     PushValues(func_type.results, results);
   } else {
-    PushCall(*cast<DefinedFunc>(func.get()));
+    if (PushCall(*cast<DefinedFunc>(func.get()), out_trap) == RunResult::Trap) {
+      return RunResult::Ok;
+    }
   }
   return RunResult::Ok;
 }
@@ -1656,7 +1682,7 @@ RunResult Thread::DoStore(Instr instr, Trap::Ptr* out_trap) {
   TRAP_IF(Failed(memory->Store(offset, instr.imm_u32x2.snd, val)),
           StringPrintf("out of bounds memory access: access at %" PRIu64
                        "+%" PRIzd " >= max value %u",
-                       u64{offset} + instr.imm_u32x2.snd, sizeof(T),
+                       u64{offset} + instr.imm_u32x2.snd, sizeof(V),
                        memory->ByteSize()));
   return RunResult::Ok;
 }
@@ -1698,6 +1724,9 @@ RunResult Thread::DoBinop(BinopTrapFunc<R, T> f, Trap::Ptr* out_trap) {
 template <typename R, typename T>
 RunResult Thread::DoConvert(Trap::Ptr* out_trap) {
   auto val = Pop<T>();
+  if (std::is_integral<R>::value && std::is_floating_point<T>::value) {
+    TRAP_IF(std::isnan(val), "invalid conversion to integer");
+  }
   TRAP_UNLESS(CanConvert<R>(val), "integer overflow");
   Push<R>(static_cast<R>(val));
   return RunResult::Ok;
@@ -1716,7 +1745,7 @@ RunResult Thread::DoMemoryInit(Instr instr, Trap::Ptr* out_trap) {
   auto src = Pop<u32>();
   auto dst = Pop<u32>();
   TRAP_IF(Failed(memory->Init(dst, data, src, size)),
-          "memory.init out of bounds");
+          "out of bounds memory access: memory.init out of bounds");
   return RunResult::Ok;
 }
 
@@ -1732,7 +1761,7 @@ RunResult Thread::DoMemoryCopy(Instr instr, Trap::Ptr* out_trap) {
   auto src = Pop<u32>();
   auto dst = Pop<u32>();
   TRAP_IF(Failed(Memory::Copy(*mem_dst, dst, *mem_src, src, size)),
-          "memory.copy out of bounds");
+          "out of bounds memory access: memory.copy out of bounds");
   return RunResult::Ok;
 }
 
@@ -1741,7 +1770,8 @@ RunResult Thread::DoMemoryFill(Instr instr, Trap::Ptr* out_trap) {
   auto size = Pop<u32>();
   auto value = Pop<u32>();
   auto dst = Pop<u32>();
-  TRAP_IF(Failed(memory->Fill(dst, value, size)), "memory.fill out of bounds");
+  TRAP_IF(Failed(memory->Fill(dst, value, size)),
+          "out of bounds memory access: memory.fill out of bounds");
   return RunResult::Ok;
 }
 
@@ -1752,7 +1782,7 @@ RunResult Thread::DoTableInit(Instr instr, Trap::Ptr* out_trap) {
   auto src = Pop<u32>();
   auto dst = Pop<u32>();
   TRAP_IF(Failed(table->Init(store_, dst, elem, src, size)),
-          "table.init out of bounds");
+          "out of bounds table access: table.init out of bounds");
   return RunResult::Ok;
 }
 
@@ -1768,7 +1798,7 @@ RunResult Thread::DoTableCopy(Instr instr, Trap::Ptr* out_trap) {
   auto src = Pop<u32>();
   auto dst = Pop<u32>();
   TRAP_IF(Failed(Table::Copy(store_, *table_dst, dst, *table_src, src, size)),
-          "table.copy out of bounds");
+          "out of bounds table access: table.copy out of bounds");
   return RunResult::Ok;
 }
 
@@ -1776,9 +1806,10 @@ RunResult Thread::DoTableGet(Instr instr, Trap::Ptr* out_trap) {
   Table::Ptr table{store_, inst_->tables()[instr.imm_u32]};
   auto index = Pop<u32>();
   Ref ref;
-  TRAP_IF(
-      Failed(table->Get(index, &ref)),
-      StringPrintf("table.get at %u >= max value %u", index, table->size()));
+  TRAP_IF(Failed(table->Get(index, &ref)),
+          StringPrintf(
+              "out of bounds table access: table.get at %u >= max value %u",
+              index, table->size()));
   Push(ref);
   return RunResult::Ok;
 }
@@ -1787,9 +1818,10 @@ RunResult Thread::DoTableSet(Instr instr, Trap::Ptr* out_trap) {
   Table::Ptr table{store_, inst_->tables()[instr.imm_u32]};
   auto ref = Pop<Ref>();
   auto index = Pop<u32>();
-  TRAP_IF(
-      Failed(table->Set(store_, index, ref)),
-      StringPrintf("table.set at %u >= max value %u", index, table->size()));
+  TRAP_IF(Failed(table->Set(store_, index, ref)),
+          StringPrintf(
+              "out of bounds table access: table.set at %u >= max value %u",
+              index, table->size()));
   return RunResult::Ok;
 }
 
@@ -2110,7 +2142,31 @@ std::string Thread::TraceSource::Pick(Index index, Instr instr) {
 ValueType Thread::TraceSource::GetLocalType(Index stack_slot) {
   const Frame& frame = thread_->frames_.back();
   DefinedFunc::Ptr func{thread_->store_, frame.func};
-  Index local_index = (thread_->values_.size() - frame.values) - stack_slot - 1;
+  // When a function is called, the arguments are first pushed on the stack by
+  // the caller, then the new call frame is pushed (which caches the current
+  // height of the value stack). At that point, any local variables will be
+  // allocated on the stack. For example, a function that has two parameters
+  // and one local variable will have a stack like this:
+  //
+  //                 frame.values      top of stack
+  //                 v                 v
+  //   param1 param2 | local1 ..........
+  //
+  // When the instruction stream is generated, all local variable access is
+  // translated into a value relative to the top of the stack, counting up from
+  // 1. So in the previous example, if there are three values above the local
+  // variable, the stack looks like:
+  //
+  //              param1 param2 | local1 value1 value2 value3
+  // stack slot:    6      5        4      3      2      1
+  // local index:   0      1        2
+  //
+  // local1 can be accessed with stack_slot 4, and param1 can be accessed with
+  // stack_slot 6. The formula below takes these values into account to convert
+  // the stack_slot into a local index.
+  Index local_index = (thread_->values_.size() - frame.values +
+                       func->func_type().params.size()) -
+                      stack_slot;
   return func->desc().GetLocalType(local_index);
 }
 

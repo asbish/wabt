@@ -2,6 +2,18 @@
 ;;; STDIN_FILE: third_party/testsuite/proposals/bulk-memory-operations/elem.wast
 ;;; ARGS*: --enable-bulk-memory
 (;; STDOUT ;;;
+out/test/spec/bulk-memory-operations/elem.wast:196: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [0, 1) >= max value 0
+out/test/spec/bulk-memory-operations/elem.wast:205: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [0, 1) >= max value 0
+out/test/spec/bulk-memory-operations/elem.wast:214: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [0, 1) >= max value 0
+out/test/spec/bulk-memory-operations/elem.wast:223: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [1, 1) >= max value 0
+out/test/spec/bulk-memory-operations/elem.wast:230: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [10, 11) >= max value 10
+out/test/spec/bulk-memory-operations/elem.wast:238: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [10, 11) >= max value 10
+out/test/spec/bulk-memory-operations/elem.wast:247: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [10, 11) >= max value 10
+out/test/spec/bulk-memory-operations/elem.wast:255: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [10, 11) >= max value 10
+out/test/spec/bulk-memory-operations/elem.wast:264: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [4294967295, 4294967296) >= max value 10
+out/test/spec/bulk-memory-operations/elem.wast:272: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [4294967295, 4294967296) >= max value 10
+out/test/spec/bulk-memory-operations/elem.wast:281: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [4294967286, 4294967287) >= max value 10
+out/test/spec/bulk-memory-operations/elem.wast:289: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [4294967286, 4294967287) >= max value 10
 out/test/spec/bulk-memory-operations/elem.wast:300: assert_invalid passed:
   0000015: error: elem section without table section
 out/test/spec/bulk-memory-operations/elem.wast:310: assert_invalid passed:

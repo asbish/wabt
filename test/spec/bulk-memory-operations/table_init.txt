@@ -56,7 +56,7 @@ out/test/spec/bulk-memory-operations/table_init.wast:189: assert_trap passed: un
 out/test/spec/bulk-memory-operations/table_init.wast:190: assert_trap passed: uninitialized table element
 out/test/spec/bulk-memory-operations/table_init.wast:191: assert_trap passed: uninitialized table element
 out/test/spec/bulk-memory-operations/table_init.wast:193: assert_invalid passed:
-  error: invalid elem_segment_index: 0 (max 0)
+  error: invalid elem segment index: 0 (max 0)
   0000024: error: OnElemDropExpr callback failed
 out/test/spec/bulk-memory-operations/table_init.wast:199: assert_invalid passed:
   error: table.init requires an imported or defined table.

@@ -58,7 +58,7 @@ template <typename T> T IntClz(T val) { return Clz(val); }
 template <typename T> T IntCtz(T val) { return Ctz(val); }
 template <typename T> T IntPopcnt(T val) { return Popcount(val); }
 template <typename T> T IntNot(T val) { return ~val; }
-template <typename T> T Neg(T val) { return CanonNaN(-val); }
+template <typename T> T Neg(T val) { return -val; }
 template <typename T> T Add(T lhs, T rhs) { return CanonNaN(lhs + rhs); }
 template <typename T> T Sub(T lhs, T rhs) { return CanonNaN(lhs - rhs); }
 template <typename T> T Mul(T lhs, T rhs) { return CanonNaN(lhs * rhs); }
@@ -153,7 +153,9 @@ T FloatDiv(T lhs, T rhs) {
   if (WABT_UNLIKELY(rhs == 0)) {
     return std::isnan(lhs) || lhs == 0
                ? std::numeric_limits<T>::quiet_NaN()
-               : std::copysign(std::numeric_limits<T>::infinity(), lhs * rhs);
+               : ((std::signbit(lhs) ^ std::signbit(rhs))
+                      ? -std::numeric_limits<T>::infinity()
+                      : std::numeric_limits<T>::infinity());
   }
   return CanonNaN(lhs / rhs);
 }
@@ -162,7 +164,7 @@ template <typename T>
 T FloatMin(T lhs, T rhs) {
   if (WABT_UNLIKELY(std::isnan(lhs) || std::isnan(rhs))) {
     return std::numeric_limits<T>::quiet_NaN();
-  } else if (WABT_UNLIKELY(lhs == 0 || rhs == 0)) {
+  } else if (WABT_UNLIKELY(lhs == 0 && rhs == 0)) {
     return std::signbit(lhs) ? lhs : rhs;
   } else {
     return std::min(lhs, rhs);
@@ -173,7 +175,7 @@ template <typename T>
 T FloatMax(T lhs, T rhs) {
   if (WABT_UNLIKELY(std::isnan(lhs) || std::isnan(rhs))) {
     return std::numeric_limits<T>::quiet_NaN();
-  } else if (WABT_UNLIKELY(lhs == 0 || rhs == 0)) {
+  } else if (WABT_UNLIKELY(lhs == 0 && rhs == 0)) {
     return std::signbit(lhs) ? rhs : lhs;
   } else {
     return std::max(lhs, rhs);
@@ -183,7 +185,7 @@ T FloatMax(T lhs, T rhs) {
 template <typename R, typename T> bool CanConvert(T val) { return true; }
 template <> inline bool CanConvert<s32, f32>(f32 val) { return val >= -2147483648.f && val < 2147483648.f; }
 template <> inline bool CanConvert<s32, f64>(f64 val) { return val >= -2147483648. && val <= 2147483647.; }
-template <> inline bool CanConvert<u32, f32>(f32 val) { return val > -1.f && val <= 4294967296.f; }
+template <> inline bool CanConvert<u32, f32>(f32 val) { return val > -1.f && val < 4294967296.f; }
 template <> inline bool CanConvert<u32, f64>(f64 val) { return val > -1. && val <= 4294967295.; }
 template <> inline bool CanConvert<s64, f32>(f32 val) { return val >= -9223372036854775808.f && val < 9223372036854775808.f; }
 template <> inline bool CanConvert<s64, f64>(f64 val) { return val >= -9223372036854775808. && val < 9223372036854775808.; }
