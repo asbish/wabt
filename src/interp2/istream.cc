@@ -695,6 +695,10 @@ void Istream::Disassemble(Stream* stream) const {
   Disassemble(stream, 0, data_.size());
 }
 
+std::string Istream::DisassemblySource::Header(Offset offset) {
+  return StringPrintf("%4u", offset);
+}
+
 std::string Istream::DisassemblySource::Pick(Index index, Instr instr) {
   return StringPrintf("%%[-%d]", index);
 }
@@ -719,7 +723,7 @@ Istream::Offset Istream::Trace(Stream* stream,
                                TraceSource* source) const {
   Offset start = offset;
   Instr instr = Read(&offset);
-  stream->Writef("%4u| %s", start, instr.op.GetName());
+  stream->Writef("%s| %s", source->Header(start).c_str(), instr.op.GetName());
 
   switch (instr.kind) {
     case InstrKind::Imm_0_Op_0:

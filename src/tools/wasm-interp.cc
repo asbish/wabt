@@ -211,6 +211,10 @@ Result RunAllExports(const Instance::Ptr& instance, Errors* errors) {
     }
     auto* func_type = cast<FuncType>(export_.type.type.get());
     if (func_type->params.empty()) {
+      if (s_trace_stream) {
+        s_trace_stream->Writef(">>> running export \"%s\"\n",
+                               export_.type.name.c_str());
+      }
       auto func = s_store.UnsafeGet<Func>(instance->funcs()[export_.index]);
       Values params;
       Values results;
@@ -227,6 +231,7 @@ Result RunAllExports(const Instance::Ptr& instance, Errors* errors) {
 Result ReadAndInstantiateModule(const char* module_filename,
                                 Errors* errors,
                                 Instance::Ptr* out_instance) {
+  auto* stream = s_stdout_stream.get();
   std::vector<uint8_t> file_data;
   CHECK_RESULT(ReadFile(module_filename, &file_data));
 
@@ -240,7 +245,7 @@ Result ReadAndInstantiateModule(const char* module_filename,
                           &module_desc));
 
   if (s_verbose) {
-    module_desc.istream.Disassemble(s_stdout_stream.get());
+    module_desc.istream.Disassemble(stream);
   }
 
   auto module = Module::New(s_store, module_desc);
@@ -260,8 +265,8 @@ Result ReadAndInstantiateModule(const char* module_filename,
                         [=](const Values& params, Values& results,
                             Trap::Ptr* trap) -> Result {
                           printf("called host ");
-                          WriteCall(s_stdout_stream.get(), import_name,
-                                    func_type, params, results, *trap);
+                          WriteCall(stream, import_name, func_type, params,
+                                    results, *trap);
                           return Result::Ok;
                         });
       imports.push_back(host_func.ref());
@@ -276,7 +281,7 @@ Result ReadAndInstantiateModule(const char* module_filename,
   RefPtr<Trap> trap;
   *out_instance = Instance::Instantiate(s_store, module.ref(), imports, &trap);
   if (!*out_instance) {
-    WriteTrap(s_stdout_stream.get(), "error initializing module", trap);
+    WriteTrap(stream, "error initializing module", trap);
     return Result::Error;
   }
 

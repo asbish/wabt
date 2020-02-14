@@ -108,10 +108,14 @@ struct Istream {
   // TODO separate out disassembly/tracing?
   struct TraceSource {
     virtual ~TraceSource() {}
+    // Whatever content should go before the instruction on each line, e.g. the
+    // call stack size, value stack size, and istream offset.
+    virtual std::string Header(Offset) = 0;
     virtual std::string Pick(Index, Instr) = 0;
   };
 
   struct DisassemblySource : TraceSource {
+    std::string Header(Offset) override;
     std::string Pick(Index, Instr) override;
   };
 

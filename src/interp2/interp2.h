@@ -1062,7 +1062,8 @@ class Thread : public Object {
 struct Thread::TraceSource : Istream::TraceSource {
  public:
   explicit TraceSource(Thread*);
-  virtual std::string Pick(Index, Instr);
+  std::string Header(Istream::Offset) override;
+  std::string Pick(Index, Instr) override;
 
  private:
   ValueType GetLocalType(Index);

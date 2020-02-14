@@ -2048,6 +2048,12 @@ RunResult Thread::DoAtomicRmwCmpxchg(Instr instr, Trap::Ptr* out_trap) {
 
 Thread::TraceSource::TraceSource(Thread* thread) : thread_(thread) {}
 
+std::string Thread::TraceSource::Header(Istream::Offset offset) {
+  return StringPrintf("#%" PRIzd ". %4u: V:%-3" PRIzd,
+                      thread_->frames_.size() - 1, offset,
+                      thread_->values_.size());
+}
+
 std::string Thread::TraceSource::Pick(Index index, Instr instr) {
   Value val = thread_->Pick(index);
   const char* reftype;
