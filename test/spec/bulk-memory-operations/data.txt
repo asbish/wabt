@@ -2,20 +2,20 @@
 ;;; STDIN_FILE: third_party/testsuite/proposals/bulk-memory-operations/data.wast
 ;;; ARGS*: --enable-bulk-memory
 (;; STDOUT ;;;
-out/test/spec/bulk-memory-operations/data.wast:174: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [0, 1) >= max value 0
-out/test/spec/bulk-memory-operations/data.wast:182: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [0, 1) >= max value 0
-out/test/spec/bulk-memory-operations/data.wast:190: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [0, 1) >= max value 0
+out/test/spec/bulk-memory-operations/data.wast:174: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [0, 0) >= max value 0
+out/test/spec/bulk-memory-operations/data.wast:182: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [0, 0) >= max value 0
+out/test/spec/bulk-memory-operations/data.wast:190: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [0, 0) >= max value 0
 out/test/spec/bulk-memory-operations/data.wast:197: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [1, 1) >= max value 0
 out/test/spec/bulk-memory-operations/data.wast:204: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [1, 1) >= max value 0
-out/test/spec/bulk-memory-operations/data.wast:221: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [666, 667) >= max value 0
-out/test/spec/bulk-memory-operations/data.wast:230: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [65536, 65537) >= max value 65536
-out/test/spec/bulk-memory-operations/data.wast:237: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [65536, 65537) >= max value 65536
-out/test/spec/bulk-memory-operations/data.wast:245: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [131072, 131073) >= max value 131072
-out/test/spec/bulk-memory-operations/data.wast:253: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [131072, 131073) >= max value 131072
-out/test/spec/bulk-memory-operations/data.wast:261: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [4294967295, 4294967296) >= max value 65536
-out/test/spec/bulk-memory-operations/data.wast:268: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [4294967295, 4294967296) >= max value 65536
-out/test/spec/bulk-memory-operations/data.wast:276: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [4294967196, 4294967197) >= max value 131072
-out/test/spec/bulk-memory-operations/data.wast:283: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [4294967196, 4294967197) >= max value 65536
+out/test/spec/bulk-memory-operations/data.wast:221: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [666, 666) >= max value 0
+out/test/spec/bulk-memory-operations/data.wast:230: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [65536, 65536) >= max value 65536
+out/test/spec/bulk-memory-operations/data.wast:237: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [65536, 65536) >= max value 65536
+out/test/spec/bulk-memory-operations/data.wast:245: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [131072, 131072) >= max value 131072
+out/test/spec/bulk-memory-operations/data.wast:253: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [131072, 131072) >= max value 131072
+out/test/spec/bulk-memory-operations/data.wast:261: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [4294967295, 4294967295) >= max value 65536
+out/test/spec/bulk-memory-operations/data.wast:268: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [4294967295, 4294967295) >= max value 65536
+out/test/spec/bulk-memory-operations/data.wast:276: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [4294967196, 4294967196) >= max value 131072
+out/test/spec/bulk-memory-operations/data.wast:283: assert_uninstantiable passed: out of bounds memory access: data segment is out of bounds: [4294967196, 4294967196) >= max value 65536
 out/test/spec/bulk-memory-operations/data.wast:293: assert_invalid passed:
   000000b: error: data section without memory section
 out/test/spec/bulk-memory-operations/data.wast:302: assert_invalid passed:

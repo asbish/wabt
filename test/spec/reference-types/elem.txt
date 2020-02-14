@@ -2,18 +2,18 @@
 ;;; STDIN_FILE: third_party/testsuite/proposals/reference-types/elem.wast
 ;;; ARGS*: --enable-reference-types
 (;; STDOUT ;;;
-out/test/spec/reference-types/elem.wast:209: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [0, 1) >= max value 0
-out/test/spec/reference-types/elem.wast:218: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [0, 1) >= max value 0
-out/test/spec/reference-types/elem.wast:227: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [0, 1) >= max value 0
+out/test/spec/reference-types/elem.wast:209: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [0, 0) >= max value 0
+out/test/spec/reference-types/elem.wast:218: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [0, 0) >= max value 0
+out/test/spec/reference-types/elem.wast:227: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [0, 0) >= max value 0
 out/test/spec/reference-types/elem.wast:236: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [1, 1) >= max value 0
-out/test/spec/reference-types/elem.wast:243: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [10, 11) >= max value 10
-out/test/spec/reference-types/elem.wast:251: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [10, 11) >= max value 10
-out/test/spec/reference-types/elem.wast:260: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [10, 11) >= max value 10
-out/test/spec/reference-types/elem.wast:268: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [10, 11) >= max value 10
-out/test/spec/reference-types/elem.wast:277: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [4294967295, 4294967296) >= max value 10
-out/test/spec/reference-types/elem.wast:285: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [4294967295, 4294967296) >= max value 10
-out/test/spec/reference-types/elem.wast:294: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [4294967286, 4294967287) >= max value 10
-out/test/spec/reference-types/elem.wast:302: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [4294967286, 4294967287) >= max value 10
+out/test/spec/reference-types/elem.wast:243: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [10, 10) >= max value 10
+out/test/spec/reference-types/elem.wast:251: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [10, 10) >= max value 10
+out/test/spec/reference-types/elem.wast:260: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [10, 10) >= max value 10
+out/test/spec/reference-types/elem.wast:268: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [10, 10) >= max value 10
+out/test/spec/reference-types/elem.wast:277: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [4294967295, 4294967295) >= max value 10
+out/test/spec/reference-types/elem.wast:285: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [4294967295, 4294967295) >= max value 10
+out/test/spec/reference-types/elem.wast:294: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [4294967286, 4294967286) >= max value 10
+out/test/spec/reference-types/elem.wast:302: assert_uninstantiable passed: out of bounds table access: elem segment is out of bounds: [4294967286, 4294967286) >= max value 10
 out/test/spec/reference-types/elem.wast:320: assert_trap passed: out of bounds table access: table.init out of bounds
 out/test/spec/reference-types/elem.wast:330: assert_trap passed: out of bounds table access: table.init out of bounds
 out/test/spec/reference-types/elem.wast:335: assert_invalid passed:

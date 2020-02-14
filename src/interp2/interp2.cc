@@ -185,7 +185,7 @@ ValueType FuncDesc::GetLocalType(Index index) const {
 }
 
 //// Store ////
-Store::Store() {
+Store::Store(const Features& features) : features_(features) {
   Ref ref{objects_.New(new Object(ObjectKind::Null))};
   assert(ref == Ref::Null);
   roots_.New(ref);
@@ -747,7 +747,8 @@ Instance::Ptr Instance::Instantiate(Store& store,
 
   // Initialization.
   enum Pass { Check, Init };
-  for (auto pass : {Check, Init}) {
+  int pass = store.features().bulk_memory_enabled() ? Init : Check;
+  for (; pass <= Init; ++pass) {
     // Elems.
     for (auto&& segment : inst->elems_) {
       auto&& desc = segment.desc();

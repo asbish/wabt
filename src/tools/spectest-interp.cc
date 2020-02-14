@@ -937,7 +937,7 @@ class CommandRunner {
   std::string source_filename_;
 };
 
-CommandRunner::CommandRunner() {
+CommandRunner::CommandRunner() : store_(s_features) {
   auto&& spectest = registry_["spectest"];
 
   // Initialize print functions for the spec test.

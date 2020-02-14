@@ -25,6 +25,7 @@
 
 #include "src/cast.h"
 #include "src/common.h"
+#include "src/feature.h"
 #include "src/opcode.h"
 #include "src/result.h"
 #include "src/string-view.h"
@@ -398,7 +399,7 @@ class Store {
   using ObjectList = FreeList<std::unique_ptr<Object>>;
   using RootList = FreeList<Ref>;
 
-  explicit Store();
+  explicit Store(const Features& = Features{});
 
   bool IsValid(Ref) const;
   bool HasValueType(Ref, ValueType) const;
@@ -420,10 +421,13 @@ class Store {
   void Mark(Ref);
   void Mark(const RefVec&);
 
+  const Features& features() const;
+
  private:
   template <typename T>
   friend class RefPtr;
 
+  Features features_;
   ObjectList objects_;
   RootList roots_;
   std::vector<bool> marks_;

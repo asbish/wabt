@@ -402,6 +402,10 @@ RefPtr<T> Store::Alloc(Args&&... args) {
   return ptr;
 }
 
+inline const Features& Store::features() const {
+  return features_;
+}
+
 //// Object ////
 // static
 inline bool Object::classof(const Object* obj) {
