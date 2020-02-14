@@ -966,7 +966,7 @@ Result BinaryReaderInterp::OnAtomicLoadExpr(Opcode opcode,
   CHECK_RESULT(CheckHasMemory(opcode));
   CHECK_RESULT(CheckAtomicAlign(alignment_log2, opcode.GetMemorySize()));
   CHECK_RESULT(typechecker_.OnAtomicLoad(opcode));
-  istream_.Emit(opcode, offset);
+  istream_.Emit(opcode, kMemoryIndex0, offset);
   return Result::Ok;
 }
 
@@ -976,7 +976,7 @@ Result BinaryReaderInterp::OnAtomicStoreExpr(Opcode opcode,
   CHECK_RESULT(CheckHasMemory(opcode));
   CHECK_RESULT(CheckAtomicAlign(alignment_log2, opcode.GetMemorySize()));
   CHECK_RESULT(typechecker_.OnAtomicStore(opcode));
-  istream_.Emit(opcode, offset);
+  istream_.Emit(opcode, kMemoryIndex0, offset);
   return Result::Ok;
 }
 
@@ -986,7 +986,7 @@ Result BinaryReaderInterp::OnAtomicRmwExpr(Opcode opcode,
   CHECK_RESULT(CheckHasMemory(opcode));
   CHECK_RESULT(CheckAtomicAlign(alignment_log2, opcode.GetMemorySize()));
   CHECK_RESULT(typechecker_.OnAtomicRmw(opcode));
-  istream_.Emit(opcode, offset);
+  istream_.Emit(opcode, kMemoryIndex0, offset);
   return Result::Ok;
 }
 
@@ -996,7 +996,7 @@ Result BinaryReaderInterp::OnAtomicRmwCmpxchgExpr(Opcode opcode,
   CHECK_RESULT(CheckHasMemory(opcode));
   CHECK_RESULT(CheckAtomicAlign(alignment_log2, opcode.GetMemorySize()));
   CHECK_RESULT(typechecker_.OnAtomicRmwCmpxchg(opcode));
-  istream_.Emit(opcode, offset);
+  istream_.Emit(opcode, kMemoryIndex0, offset);
   return Result::Ok;
 }
 

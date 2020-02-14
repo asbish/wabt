@@ -510,18 +510,23 @@ inline Memory::Ptr Memory::New(interp2::Store& store, MemoryDesc desc) {
 }
 
 inline bool Memory::IsValidAccess(u32 offset, u32 addend, size_t size) const {
-  size_t data_size = data_.size();
-  return size <= data_size && addend <= data_size - size &&
-         offset <= data_size - size - addend;
+  return u64{offset} + addend + size <= data_.size();
+}
+
+inline bool Memory::IsValidAtomicAccess(u32 offset,
+                                        u32 addend,
+                                        size_t size) const {
+  return IsValidAccess(offset, addend, size) &&
+         ((offset + addend) & (size - 1)) == 0;
 }
 
 template <typename T>
 Result Memory::Load(u32 offset, u32 addend, T* out) const {
-  if (IsValidAccess(offset, addend, sizeof(T))) {
-    memcpy(out, data_.data() + offset + addend, sizeof(T));
-    return Result::Ok;
+  if (!IsValidAccess(offset, addend, sizeof(T))) {
+    return Result::Error;
   }
-  return Result::Error;
+  memcpy(out, data_.data() + offset + addend, sizeof(T));
+  return Result::Ok;
 }
 
 template <typename T>
@@ -534,11 +539,53 @@ T Memory::UnsafeLoad(u32 offset, u32 addend) const {
 
 template <typename T>
 Result Memory::Store(u32 offset, u32 addend, T val) {
-  if (IsValidAccess(offset, addend, sizeof(T))) {
-    memcpy(data_.data() + offset + addend, &val, sizeof(T));
-    return Result::Ok;
+  if (!IsValidAccess(offset, addend, sizeof(T))) {
+    return Result::Error;
   }
-  return Result::Error;
+  memcpy(data_.data() + offset + addend, &val, sizeof(T));
+  return Result::Ok;
+}
+
+template <typename T>
+Result Memory::AtomicLoad(u32 offset, u32 addend, T* out) const {
+  if (!IsValidAtomicAccess(offset, addend, sizeof(T))) {
+    return Result::Error;
+  }
+  memcpy(out, data_.data() + offset + addend, sizeof(T));
+  return Result::Ok;
+}
+
+template <typename T>
+Result Memory::AtomicStore(u32 offset, u32 addend, T val) {
+  if (!IsValidAtomicAccess(offset, addend, sizeof(T))) {
+    return Result::Error;
+  }
+  memcpy(data_.data() + offset + addend, &val, sizeof(T));
+  return Result::Ok;
+}
+
+template <typename T, typename F>
+Result Memory::AtomicRmw(u32 offset, u32 addend, T rhs, F&& func, T* out) {
+  T lhs;
+  CHECK_RESULT(AtomicLoad(offset, addend, &lhs));
+  CHECK_RESULT(AtomicStore(offset, addend, func(lhs, rhs)));
+  *out = lhs;
+  return Result::Ok;
+}
+
+template <typename T>
+Result Memory::AtomicRmwCmpxchg(u32 offset,
+                                u32 addend,
+                                T expect,
+                                T replace,
+                                T* out) {
+  T read;
+  CHECK_RESULT(AtomicLoad(offset, addend, &read));
+  if (read == expect) {
+    CHECK_RESULT(AtomicStore(offset, addend, replace));
+  }
+  *out = read;
+  return Result::Ok;
 }
 
 inline u32 Memory::ByteSize() const {

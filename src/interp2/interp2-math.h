@@ -71,6 +71,7 @@ template <typename T> T IntMin(T lhs, T rhs) { return std::min(lhs, rhs); }
 template <typename T> T IntMax(T lhs, T rhs) { return std::max(lhs, rhs); }
 template <typename T> T IntAndNot(T lhs, T rhs) { return lhs & ~rhs; }
 template <typename T> T IntAvgr(T lhs, T rhs) { return (lhs + rhs + 1) / 2; }
+template <typename T> T Xchg(T lhs, T rhs) { return rhs; }
 
 template <typename T> struct Mask { using Type = T; };
 template <> struct Mask<f32> { using Type = u32; };

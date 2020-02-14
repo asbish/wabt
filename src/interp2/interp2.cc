@@ -815,7 +815,7 @@ Thread::Thread(Store& store, const Options& options)
   values_.reserve(options.value_stack_size);
   trace_stream_ = options.trace_stream;
   if (options.trace_stream) {
-    trace_source_ = new TraceSource(this);
+    trace_source_ = MakeUnique<TraceSource>(this);
   }
 }
 
@@ -873,8 +873,9 @@ RunResult Thread::PopCall() {
 }
 
 RunResult Thread::DoReturnCall(const Func::Ptr& func, Trap::Ptr* out_trap) {
-  // TODO
-  return RunResult::Ok;
+  PopCall();
+  DoCall(func, out_trap);
+  return frames_.empty() ? RunResult::Return : RunResult::Ok;
 }
 
 void Thread::PopValues(const ValueTypes& types, Values* out_values) {
@@ -961,7 +962,7 @@ RunResult Thread::StepInternal(Trap::Ptr* out_trap) {
   auto& istream = mod_->desc().istream;
 
   if (trace_stream_) {
-    istream.Trace(trace_stream_, pc, trace_source_);
+    istream.Trace(trace_stream_, pc, trace_source_.get());
   }
 
   auto instr = istream.Read(&pc);
@@ -1504,6 +1505,76 @@ RunResult Thread::StepInternal(Trap::Ptr* out_trap) {
     case O::I8X16AvgrU: return DoSimdBinop(IntAvgr<u8>);
     case O::I16X8AvgrU: return DoSimdBinop(IntAvgr<u16>);
 
+    case O::AtomicNotify:
+    case O::I32AtomicWait:
+    case O::I64AtomicWait:
+      return TRAP("not implemented");
+
+    case O::I32AtomicLoad:       return DoAtomicLoad<u32>(instr, out_trap);
+    case O::I64AtomicLoad:       return DoAtomicLoad<u64>(instr, out_trap);
+    case O::I32AtomicLoad8U:     return DoAtomicLoad<u32, u8>(instr, out_trap);
+    case O::I32AtomicLoad16U:    return DoAtomicLoad<u32, u16>(instr, out_trap);
+    case O::I64AtomicLoad8U:     return DoAtomicLoad<u64, u8>(instr, out_trap);
+    case O::I64AtomicLoad16U:    return DoAtomicLoad<u64, u16>(instr, out_trap);
+    case O::I64AtomicLoad32U:    return DoAtomicLoad<u64, u32>(instr, out_trap);
+    case O::I32AtomicStore:      return DoAtomicStore<u32>(instr, out_trap);
+    case O::I64AtomicStore:      return DoAtomicStore<u64>(instr, out_trap);
+    case O::I32AtomicStore8:     return DoAtomicStore<u32, u8>(instr, out_trap);
+    case O::I32AtomicStore16:    return DoAtomicStore<u32, u16>(instr, out_trap);
+    case O::I64AtomicStore8:     return DoAtomicStore<u64, u8>(instr, out_trap);
+    case O::I64AtomicStore16:    return DoAtomicStore<u64, u16>(instr, out_trap);
+    case O::I64AtomicStore32:    return DoAtomicStore<u64, u32>(instr, out_trap);
+    case O::I32AtomicRmwAdd:     return DoAtomicRmw<u32>(Add<u32>, instr, out_trap);
+    case O::I64AtomicRmwAdd:     return DoAtomicRmw<u64>(Add<u64>, instr, out_trap);
+    case O::I32AtomicRmw8AddU:   return DoAtomicRmw<u32>(Add<u8>, instr, out_trap);
+    case O::I32AtomicRmw16AddU:  return DoAtomicRmw<u32>(Add<u16>, instr, out_trap);
+    case O::I64AtomicRmw8AddU:   return DoAtomicRmw<u64>(Add<u8>, instr, out_trap);
+    case O::I64AtomicRmw16AddU:  return DoAtomicRmw<u64>(Add<u16>, instr, out_trap);
+    case O::I64AtomicRmw32AddU:  return DoAtomicRmw<u64>(Add<u32>, instr, out_trap);
+    case O::I32AtomicRmwSub:     return DoAtomicRmw<u32>(Sub<u32>, instr, out_trap);
+    case O::I64AtomicRmwSub:     return DoAtomicRmw<u64>(Sub<u64>, instr, out_trap);
+    case O::I32AtomicRmw8SubU:   return DoAtomicRmw<u32>(Sub<u8>, instr, out_trap);
+    case O::I32AtomicRmw16SubU:  return DoAtomicRmw<u32>(Sub<u16>, instr, out_trap);
+    case O::I64AtomicRmw8SubU:   return DoAtomicRmw<u64>(Sub<u8>, instr, out_trap);
+    case O::I64AtomicRmw16SubU:  return DoAtomicRmw<u64>(Sub<u16>, instr, out_trap);
+    case O::I64AtomicRmw32SubU:  return DoAtomicRmw<u64>(Sub<u32>, instr, out_trap);
+    case O::I32AtomicRmwAnd:     return DoAtomicRmw<u32>(IntAnd<u32>, instr, out_trap);
+    case O::I64AtomicRmwAnd:     return DoAtomicRmw<u64>(IntAnd<u64>, instr, out_trap);
+    case O::I32AtomicRmw8AndU:   return DoAtomicRmw<u32>(IntAnd<u8>, instr, out_trap);
+    case O::I32AtomicRmw16AndU:  return DoAtomicRmw<u32>(IntAnd<u16>, instr, out_trap);
+    case O::I64AtomicRmw8AndU:   return DoAtomicRmw<u64>(IntAnd<u8>, instr, out_trap);
+    case O::I64AtomicRmw16AndU:  return DoAtomicRmw<u64>(IntAnd<u16>, instr, out_trap);
+    case O::I64AtomicRmw32AndU:  return DoAtomicRmw<u64>(IntAnd<u32>, instr, out_trap);
+    case O::I32AtomicRmwOr:      return DoAtomicRmw<u32>(IntOr<u32>, instr, out_trap);
+    case O::I64AtomicRmwOr:      return DoAtomicRmw<u64>(IntOr<u64>, instr, out_trap);
+    case O::I32AtomicRmw8OrU:    return DoAtomicRmw<u32>(IntOr<u8>, instr, out_trap);
+    case O::I32AtomicRmw16OrU:   return DoAtomicRmw<u32>(IntOr<u16>, instr, out_trap);
+    case O::I64AtomicRmw8OrU:    return DoAtomicRmw<u64>(IntOr<u8>, instr, out_trap);
+    case O::I64AtomicRmw16OrU:   return DoAtomicRmw<u64>(IntOr<u16>, instr, out_trap);
+    case O::I64AtomicRmw32OrU:   return DoAtomicRmw<u64>(IntOr<u32>, instr, out_trap);
+    case O::I32AtomicRmwXor:     return DoAtomicRmw<u32>(IntXor<u32>, instr, out_trap);
+    case O::I64AtomicRmwXor:     return DoAtomicRmw<u64>(IntXor<u64>, instr, out_trap);
+    case O::I32AtomicRmw8XorU:   return DoAtomicRmw<u32>(IntXor<u8>, instr, out_trap);
+    case O::I32AtomicRmw16XorU:  return DoAtomicRmw<u32>(IntXor<u16>, instr, out_trap);
+    case O::I64AtomicRmw8XorU:   return DoAtomicRmw<u64>(IntXor<u8>, instr, out_trap);
+    case O::I64AtomicRmw16XorU:  return DoAtomicRmw<u64>(IntXor<u16>, instr, out_trap);
+    case O::I64AtomicRmw32XorU:  return DoAtomicRmw<u64>(IntXor<u32>, instr, out_trap);
+    case O::I32AtomicRmwXchg:    return DoAtomicRmw<u32>(Xchg<u32>, instr, out_trap);
+    case O::I64AtomicRmwXchg:    return DoAtomicRmw<u64>(Xchg<u64>, instr, out_trap);
+    case O::I32AtomicRmw8XchgU:  return DoAtomicRmw<u32>(Xchg<u8>, instr, out_trap);
+    case O::I32AtomicRmw16XchgU: return DoAtomicRmw<u32>(Xchg<u16>, instr, out_trap);
+    case O::I64AtomicRmw8XchgU:  return DoAtomicRmw<u64>(Xchg<u8>, instr, out_trap);
+    case O::I64AtomicRmw16XchgU: return DoAtomicRmw<u64>(Xchg<u16>, instr, out_trap);
+    case O::I64AtomicRmw32XchgU: return DoAtomicRmw<u64>(Xchg<u32>, instr, out_trap);
+
+    case O::I32AtomicRmwCmpxchg:    return DoAtomicRmwCmpxchg<u32>(instr, out_trap);
+    case O::I64AtomicRmwCmpxchg:    return DoAtomicRmwCmpxchg<u64>(instr, out_trap);
+    case O::I32AtomicRmw8CmpxchgU:  return DoAtomicRmwCmpxchg<u32, u8>(instr, out_trap);
+    case O::I32AtomicRmw16CmpxchgU: return DoAtomicRmwCmpxchg<u32, u16>(instr, out_trap);
+    case O::I64AtomicRmw8CmpxchgU:  return DoAtomicRmwCmpxchg<u64, u8>(instr, out_trap);
+    case O::I64AtomicRmw16CmpxchgU: return DoAtomicRmwCmpxchg<u64, u16>(instr, out_trap);
+    case O::I64AtomicRmw32CmpxchgU: return DoAtomicRmwCmpxchg<u64, u32>(instr, out_trap);
+
     // The following opcodes are either never generated or should never be
     // executed.
     case O::Nop:
@@ -1919,6 +1990,59 @@ RunResult Thread::DoSimdLoadExtend(Instr instr, Trap::Ptr* out_trap) {
     result.v[i] = val.v[i];
   }
   Push(result);
+  return RunResult::Ok;
+}
+
+template <typename T, typename V>
+RunResult Thread::DoAtomicLoad(Instr instr, Trap::Ptr* out_trap) {
+  Memory::Ptr memory{store_, inst_->memories()[instr.imm_u32x2.fst]};
+  u32 offset = Pop<u32>();
+  V val;
+  TRAP_IF(Failed(memory->AtomicLoad(offset, instr.imm_u32x2.snd, &val)),
+          StringPrintf("invalid atomic access at %u+%u", offset,
+                       instr.imm_u32x2.snd));
+  Push(static_cast<T>(val));
+  return RunResult::Ok;
+}
+
+template <typename T, typename V>
+RunResult Thread::DoAtomicStore(Instr instr, Trap::Ptr* out_trap) {
+  Memory::Ptr memory{store_, inst_->memories()[instr.imm_u32x2.fst]};
+  V val = static_cast<V>(Pop<T>());
+  u32 offset = Pop<u32>();
+  TRAP_IF(Failed(memory->AtomicStore(offset, instr.imm_u32x2.snd, val)),
+          StringPrintf("invalid atomic access at %u+%u", offset,
+                       instr.imm_u32x2.snd));
+  return RunResult::Ok;
+}
+
+template <typename R, typename T>
+RunResult Thread::DoAtomicRmw(BinopFunc<T, T> f,
+                              Instr instr,
+                              Trap::Ptr* out_trap) {
+  Memory::Ptr memory{store_, inst_->memories()[instr.imm_u32x2.fst]};
+  T val = Pop<T>();
+  u32 offset = Pop<u32>();
+  T old;
+  TRAP_IF(Failed(memory->AtomicRmw(offset, instr.imm_u32x2.snd, val, f, &old)),
+          StringPrintf("invalid atomic access at %u+%u", offset,
+                       instr.imm_u32x2.snd));
+  Push(static_cast<R>(old));
+  return RunResult::Ok;
+}
+
+template <typename T, typename V>
+RunResult Thread::DoAtomicRmwCmpxchg(Instr instr, Trap::Ptr* out_trap) {
+  Memory::Ptr memory{store_, inst_->memories()[instr.imm_u32x2.fst]};
+  V replace = static_cast<V>(Pop<T>());
+  V expect = static_cast<V>(Pop<T>());
+  V old;
+  u32 offset = Pop<u32>();
+  TRAP_IF(Failed(memory->AtomicRmwCmpxchg(offset, instr.imm_u32x2.snd, expect,
+                                          replace, &old)),
+          StringPrintf("invalid atomic access at %u+%u", offset,
+                       instr.imm_u32x2.snd));
+  Push(static_cast<T>(old));
   return RunResult::Ok;
 }
 

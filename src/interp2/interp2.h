@@ -710,6 +710,7 @@ class Memory : public Extern {
   Result Match(Store&, const ImportType&, Trap::Ptr* out_trap) override;
 
   bool IsValidAccess(u32 offset, u32 addend, size_t size) const;
+  bool IsValidAtomicAccess(u32 offset, u32 addend, size_t size) const;
 
   template <typename T>
   Result Load(u32 offset, u32 addend, T* out) const;
@@ -723,6 +724,16 @@ class Memory : public Extern {
                      const Memory& src,
                      u32 src_offset,
                      u32 size);
+
+  // Fake atomics; just checks alignment.
+  template <typename T>
+  Result AtomicLoad(u32 offset, u32 addend, T* out) const;
+  template <typename T>
+  Result AtomicStore(u32 offset, u32 addend, T);
+  template <typename T, typename F>
+  Result AtomicRmw(u32 offset, u32 addend, T, F&& func, T* out);
+  template <typename T>
+  Result AtomicRmwCmpxchg(u32 offset, u32 addend, T expect, T replace, T* out);
 
   u32 ByteSize() const;
   u32 PageSize() const;
@@ -1023,6 +1034,15 @@ class Thread : public Object {
   template <typename S, typename T>
   RunResult DoSimdLoadExtend(Instr, Trap::Ptr* out_trap);
 
+  template <typename T, typename V = T>
+  RunResult DoAtomicLoad(Instr, Trap::Ptr* out_trap);
+  template <typename T, typename V = T>
+  RunResult DoAtomicStore(Instr, Trap::Ptr* out_trap);
+  template <typename R, typename T>
+  RunResult DoAtomicRmw(BinopFunc<T, T>, Instr, Trap::Ptr* out_trap);
+  template <typename T, typename V = T>
+  RunResult DoAtomicRmwCmpxchg(Instr, Trap::Ptr* out_trap);
+
   RunResult StepInternal(Trap::Ptr* out_trap);
 
   std::vector<Frame> frames_;
@@ -1036,7 +1056,7 @@ class Thread : public Object {
 
   // Tracing.
   Stream* trace_stream_;
-  TraceSource* trace_source_;
+  std::unique_ptr<TraceSource> trace_source_;
 };
 
 struct Thread::TraceSource : Istream::TraceSource {
