@@ -10,17 +10,17 @@ test() =>
 test() =>
 test() =>
 test() =>
-out/test/spec/reference-types/memory_copy.wast:349: assert_trap passed: out of bounds memory access: memory.copy out of bound
-out/test/spec/reference-types/memory_copy.wast:710: assert_trap passed: out of bounds memory access: memory.copy out of bound
-out/test/spec/reference-types/memory_copy.wast:1072: assert_trap passed: out of bounds memory access: memory.copy out of bound
-out/test/spec/reference-types/memory_copy.wast:1433: assert_trap passed: out of bounds memory access: memory.copy out of bound
-out/test/spec/reference-types/memory_copy.wast:1795: assert_trap passed: out of bounds memory access: memory.copy out of bound
-out/test/spec/reference-types/memory_copy.wast:2156: assert_trap passed: out of bounds memory access: memory.copy out of bound
-out/test/spec/reference-types/memory_copy.wast:2517: assert_trap passed: out of bounds memory access: memory.copy out of bound
-out/test/spec/reference-types/memory_copy.wast:2878: assert_trap passed: out of bounds memory access: memory.copy out of bound
-out/test/spec/reference-types/memory_copy.wast:3239: assert_trap passed: out of bounds memory access: memory.copy out of bound
-out/test/spec/reference-types/memory_copy.wast:3600: assert_trap passed: out of bounds memory access: memory.copy out of bound
-out/test/spec/reference-types/memory_copy.wast:3961: assert_trap passed: out of bounds memory access: memory.copy out of bound
+out/test/spec/reference-types/memory_copy.wast:349: assert_trap passed: out of bounds memory access: memory.copy out of bounds
+out/test/spec/reference-types/memory_copy.wast:710: assert_trap passed: out of bounds memory access: memory.copy out of bounds
+out/test/spec/reference-types/memory_copy.wast:1072: assert_trap passed: out of bounds memory access: memory.copy out of bounds
+out/test/spec/reference-types/memory_copy.wast:1433: assert_trap passed: out of bounds memory access: memory.copy out of bounds
+out/test/spec/reference-types/memory_copy.wast:1795: assert_trap passed: out of bounds memory access: memory.copy out of bounds
+out/test/spec/reference-types/memory_copy.wast:2156: assert_trap passed: out of bounds memory access: memory.copy out of bounds
+out/test/spec/reference-types/memory_copy.wast:2517: assert_trap passed: out of bounds memory access: memory.copy out of bounds
+out/test/spec/reference-types/memory_copy.wast:2878: assert_trap passed: out of bounds memory access: memory.copy out of bounds
+out/test/spec/reference-types/memory_copy.wast:3239: assert_trap passed: out of bounds memory access: memory.copy out of bounds
+out/test/spec/reference-types/memory_copy.wast:3600: assert_trap passed: out of bounds memory access: memory.copy out of bounds
+out/test/spec/reference-types/memory_copy.wast:3961: assert_trap passed: out of bounds memory access: memory.copy out of bounds
 out/test/spec/reference-types/memory_copy.wast:4315: assert_invalid passed:
   error: memory.copy requires an imported or defined memory.
   000002d: error: OnMemoryCopyExpr callback failed
@@ -215,17 +215,17 @@ out/test/spec/reference-types/memory_copy.wast:4755: assert_invalid passed:
   0000048: error: OnMemoryCopyExpr callback failed
 test() =>
 test() =>
-out/test/spec/reference-types/memory_copy.wast:4818: assert_trap passed: out of bounds memory access: memory.copy out of bound
-out/test/spec/reference-types/memory_copy.wast:4824: assert_trap passed: out of bounds memory access: memory.copy out of bound
-out/test/spec/reference-types/memory_copy.wast:4830: assert_trap passed: out of bounds memory access: memory.copy out of bound
-out/test/spec/reference-types/memory_copy.wast:4836: assert_trap passed: out of bounds memory access: memory.copy out of bound
+out/test/spec/reference-types/memory_copy.wast:4818: assert_trap passed: out of bounds memory access: memory.copy out of bounds
+out/test/spec/reference-types/memory_copy.wast:4824: assert_trap passed: out of bounds memory access: memory.copy out of bounds
+out/test/spec/reference-types/memory_copy.wast:4830: assert_trap passed: out of bounds memory access: memory.copy out of bounds
+out/test/spec/reference-types/memory_copy.wast:4836: assert_trap passed: out of bounds memory access: memory.copy out of bounds
 test() =>
 test() =>
-out/test/spec/reference-types/memory_copy.wast:4872: assert_trap passed: out of bounds memory access: memory.copy out of bound
+out/test/spec/reference-types/memory_copy.wast:4872: assert_trap passed: out of bounds memory access: memory.copy out of bounds
 test() =>
-out/test/spec/reference-types/memory_copy.wast:4884: assert_trap passed: out of bounds memory access: memory.copy out of bound
+out/test/spec/reference-types/memory_copy.wast:4884: assert_trap passed: out of bounds memory access: memory.copy out of bounds
 test() =>
-out/test/spec/reference-types/memory_copy.wast:4896: assert_trap passed: out of bounds memory access: memory.copy out of bound
+out/test/spec/reference-types/memory_copy.wast:4896: assert_trap passed: out of bounds memory access: memory.copy out of bounds
 test() =>
 4417/4417 tests passed.
 ;;; STDOUT ;;)

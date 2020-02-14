@@ -39,7 +39,13 @@ Mutability ToMutability(bool mut) {
 }
 
 SegmentMode ToSegmentMode(uint8_t flags) {
-  return (flags & SegPassive) ? SegmentMode::Passive : SegmentMode::Active;
+  if ((flags & SegDeclared) == SegDeclared) {
+    return SegmentMode::Declared;
+  } else if ((flags & SegPassive) == SegPassive) {
+    return SegmentMode::Passive;
+  } else {
+    return SegmentMode::Active;
+  }
 }
 
 struct Label {
@@ -68,6 +74,8 @@ class BinaryReaderInterp : public BinaryReaderNop {
 
   // Implement BinaryReader.
   bool OnError(const Error&) override;
+
+  Result EndModule() override;
 
   Result OnTypeCount(Index count) override;
   Result OnType(Index index,
@@ -209,6 +217,7 @@ class BinaryReaderInterp : public BinaryReaderNop {
                                uint32_t alignment_log2,
                                Address offset) override;
 
+  Result BeginElemSection(Offset size) override;
   Result OnElemSegmentCount(Index count) override;
   Result BeginElemSegment(Index index,
                                 Index table_index,
@@ -269,6 +278,7 @@ class BinaryReaderInterp : public BinaryReaderNop {
   Index TranslateLocalIndex(Index local_index);
   ValueType GetLocalType(Index local_index);
 
+  Result CheckDeclaredFunc(Index func_index);
   Result CheckLocal(Index local_index);
   Result CheckGlobal(Index global_index);
   Result CheckDataSegment(Index data_segment_index);
@@ -305,6 +315,8 @@ class BinaryReaderInterp : public BinaryReaderNop {
   std::vector<EventType> event_types_;    // Includes imported and defined.
 
   std::set<std::string> export_names_;  // Used to check for duplicates.
+  std::vector<bool> declared_funcs_;
+  std::vector<Index> init_expr_funcs_;
 
   static const Index kMemoryIndex0 = 0;
 };
@@ -551,7 +563,8 @@ Result BinaryReaderInterp::OnInitExprRefNull(Index index) {
 
 Result BinaryReaderInterp::OnInitExprRefFunc(Index index, Index func_index) {
   init_expr_.kind = InitExprKind::RefFunc;
-  init_expr_.index_ = index;
+  init_expr_.index_ = func_index;
+  init_expr_funcs_.push_back(func_index);
   return Result::Ok;
 }
 
@@ -591,6 +604,15 @@ Result BinaryReaderInterp::OnStartFunction(Index func_index) {
     return Result::Error;
   }
   module_.starts.push_back(StartDesc{func_index});
+  return Result::Ok;
+}
+
+Result BinaryReaderInterp::BeginElemSection(Offset size) {
+  // Delay resizing `declared_funcs_` until we we know the total range of
+  // function indexes (not until after imports sections is read) and that
+  // an elem section exists (therefore the possiblity of declared functions).
+  Index max_func_index = func_types_.size();
+  declared_funcs_.resize(max_func_index);
   return Result::Ok;
 }
 
@@ -650,6 +672,7 @@ Result BinaryReaderInterp::OnElemSegmentElemExpr_RefFunc(Index segment_index,
   }
   ElemDesc& elem = module_.elems.back();
   elem.elements.push_back(ElemExpr{ElemKind::RefFunc, func_index});
+  declared_funcs_[func_index] = true;
   return Result::Ok;
 }
 
@@ -782,6 +805,25 @@ u32 BinaryReaderInterp::GetFuncOffset(Index func_index) {
     func_fixups_.Append(func_index, istream_.end());
   }
   return func.code_offset;
+}
+
+Result BinaryReaderInterp::CheckDeclaredFunc(Index func_index) {
+  if (func_index >= declared_funcs_.size() || !declared_funcs_[func_index]) {
+    PrintError("function is not declared in any elem sections: %" PRIindex,
+               func_index);
+    return Result::Error;
+  }
+  return Result::Ok;
+}
+
+Result BinaryReaderInterp::EndModule() {
+  // Verify that any ref.func used in init expressions for globals are
+  // mentioned in an elems section.  This can't be done while process the
+  // globals because the global section comes before the elem section.
+  for (Index func_index : init_expr_funcs_) {
+    CHECK_RESULT(CheckDeclaredFunc(func_index));
+  }
+  return Result::Ok;
 }
 
 Result BinaryReaderInterp::CheckLocal(Index local_index) {
@@ -1340,6 +1382,7 @@ Result BinaryReaderInterp::OnTableFillExpr(Index table_index) {
 }
 
 Result BinaryReaderInterp::OnRefFuncExpr(Index func_index) {
+  CHECK_RESULT(CheckDeclaredFunc(func_index));
   CHECK_RESULT(typechecker_.OnRefFuncExpr(func_index));
   istream_.Emit(Opcode::RefFunc, func_index);
   return Result::Ok;

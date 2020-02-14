@@ -199,6 +199,9 @@ bool Store::HasValueType(Ref ref, ValueType type) const {
   if (type == ValueType::Anyref) {
     return true;
   }
+  if (ref == Ref::Null) {
+    return true;
+  }
 
   Object* obj = objects_.Get(ref.index).get();
   switch (type) {
@@ -768,6 +771,8 @@ Instance::Ptr Instance::Instantiate(Store& store,
                          offset, u64{offset} + segment.size(), table->size()));
           return {};
         }
+      } else if (desc.mode == SegmentMode::Declared) {
+        segment.Drop();
       }
     }
 
@@ -796,6 +801,8 @@ Instance::Ptr Instance::Instantiate(Store& store,
                            memory->ByteSize()));
           return {};
         }
+      } else if (desc.mode == SegmentMode::Declared) {
+        segment.Drop();
       }
     }
   }
@@ -1850,7 +1857,7 @@ RunResult Thread::DoTableFill(Instr instr, Trap::Ptr* out_trap) {
   auto value = Pop<Ref>();
   auto dst = Pop<u32>();
   TRAP_IF(Failed(table->Fill(store_, dst, value, size)),
-          "table.fill out of bounds");
+          "out of bounds table access: table.fill out of bounds");
   return RunResult::Ok;
 }
 
@@ -2098,6 +2105,7 @@ std::string Thread::TraceSource::Header(Istream::Offset offset) {
 std::string Thread::TraceSource::Pick(Index index, Instr instr) {
   Value val = thread_->Pick(index);
   const char* reftype;
+  // TODO: the opcode index and pick index go in opposite directions.
   auto type = instr.op.GetParamType(index);
   if (type == ValueType::Void) {
     // Void should never be displayed normally; we only expect to see it when

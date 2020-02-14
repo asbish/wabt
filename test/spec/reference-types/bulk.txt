@@ -15,8 +15,8 @@ copy(i32:65280, i32:0, i32:256) =>
 copy(i32:65024, i32:65280, i32:256) =>
 copy(i32:65536, i32:0, i32:0) =>
 copy(i32:0, i32:65536, i32:0) =>
-out/test/spec/reference-types/bulk.wast:108: assert_trap passed: out of bounds memory access: memory.copy out of bound
-out/test/spec/reference-types/bulk.wast:110: assert_trap passed: out of bounds memory access: memory.copy out of bound
+out/test/spec/reference-types/bulk.wast:108: assert_trap passed: out of bounds memory access: memory.copy out of bounds
+out/test/spec/reference-types/bulk.wast:110: assert_trap passed: out of bounds memory access: memory.copy out of bounds
 init(i32:0, i32:1, i32:2) =>
 init(i32:65532, i32:0, i32:4) =>
 out/test/spec/reference-types/bulk.wast:138: assert_trap passed: out of bounds memory access: memory.init out of bounds
