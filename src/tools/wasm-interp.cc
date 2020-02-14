@@ -148,10 +148,12 @@ std::string TypedValueToString(ValueType type, const Value& val) {
     case Type::Exnref:
       return StringPrintf("exnref:%" PRIzd, val.Get<Ref>().index);
 
+    case Type::Anyref:
+      return StringPrintf("anyref:%" PRIzd, val.Get<Ref>().index);
+
     case Type::Func:
     case Type::Void:
     case Type::Any:
-    case Type::Anyref:
     case Type::I8:
     case Type::I8U:
     case Type::I16:
