@@ -499,6 +499,12 @@ union Value {
 };
 using Values = std::vector<Value>;
 
+struct TypedValue {
+  ValueType type;
+  Value value;
+};
+using TypedValues = std::vector<TypedValue>;
+
 using Finalizer = std::function<void()>;
 
 class Object {

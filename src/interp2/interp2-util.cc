@@ -23,22 +23,22 @@
 namespace wabt {
 namespace interp2 {
 
-std::string TypedValueToString(ValueType type, const Value& val) {
-  switch (type) {
+std::string TypedValueToString(const TypedValue& tv) {
+  switch (tv.type) {
     case Type::I32:
-      return StringPrintf("i32:%u", val.Get<s32>());
+      return StringPrintf("i32:%u", tv.value.Get<s32>());
 
     case Type::I64:
-      return StringPrintf("i64:%" PRIu64, val.Get<s64>());
+      return StringPrintf("i64:%" PRIu64, tv.value.Get<s64>());
 
     case Type::F32:
-      return StringPrintf("f32:%f", val.Get<f32>());
+      return StringPrintf("f32:%f", tv.value.Get<f32>());
 
     case Type::F64:
-      return StringPrintf("f64:%f", val.Get<f64>());
+      return StringPrintf("f64:%f", tv.value.Get<f64>());
 
     case Type::V128: {
-      v128 simd = val.Get<v128>();
+      v128 simd = tv.value.Get<v128>();
       return StringPrintf("v128 i32x4:0x%08x 0x%08x 0x%08x 0x%08x", simd.v[0],
                           simd.v[1], simd.v[2], simd.v[3]);
     }
@@ -47,16 +47,16 @@ std::string TypedValueToString(ValueType type, const Value& val) {
       return StringPrintf("nullref");
 
     case Type::Hostref:
-      return StringPrintf("hostref:%" PRIzd, val.Get<Ref>().index);
+      return StringPrintf("hostref:%" PRIzd, tv.value.Get<Ref>().index);
 
     case Type::Funcref:
-      return StringPrintf("funcref:%" PRIzd, val.Get<Ref>().index);
+      return StringPrintf("funcref:%" PRIzd, tv.value.Get<Ref>().index);
 
     case Type::Exnref:
-      return StringPrintf("exnref:%" PRIzd, val.Get<Ref>().index);
+      return StringPrintf("exnref:%" PRIzd, tv.value.Get<Ref>().index);
 
     case Type::Anyref:
-      return StringPrintf("anyref:%" PRIzd, val.Get<Ref>().index);
+      return StringPrintf("anyref:%" PRIzd, tv.value.Get<Ref>().index);
 
     case Type::Func:
     case Type::Void:
@@ -72,16 +72,17 @@ std::string TypedValueToString(ValueType type, const Value& val) {
   WABT_UNREACHABLE;
 }
 
-void WriteValue(Stream* stream, ValueType type, const Value& value) {
-  std::string s = TypedValueToString(type, value);
+void WriteValue(Stream* stream, const TypedValue& tv) {
+  std::string s = TypedValueToString(tv);
   stream->WriteData(s.data(), s.size());
 }
 
 void WriteValues(Stream* stream,
                  const ValueTypes& types,
                  const Values& values) {
+  assert(types.size() == values.size());
   for (size_t i = 0; i < values.size(); ++i) {
-    WriteValue(stream, types[i], values[i]);
+    WriteValue(stream, TypedValue{types[i], values[i]});
     if (i != values.size() - 1) {
       stream->Writef(", ");
     }

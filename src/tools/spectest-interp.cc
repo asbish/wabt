@@ -162,8 +162,7 @@ class RegisterCommand : public CommandMixin<CommandType::Register> {
 
 struct ExpectedValue {
   bool is_expected_nan;
-  Type type;
-  Value value;
+  TypedValue value;
   ExpectedNan expectedNan;
 };
 
@@ -225,9 +224,8 @@ class JSONParser {
   Result ParseLine(uint32_t* out_line_number);
   Result ParseTypeObject(Type* out_type);
   Result ParseTypeVector(TypeVector* out_types);
-  Result ParseConst(Type* out_type, Value* out_value);
-  Result ParseConstValue(ValueType* out_type,
-                         Value* out_value,
+  Result ParseConst(TypedValue* out_value);
+  Result ParseConstValue(TypedValue* out_value,
                          string_view type_str,
                          string_view value_str);
   Result ParseConstVector(ValueTypes* out_types, Values* out_values);
@@ -493,7 +491,7 @@ Result JSONParser::ParseTypeVector(TypeVector* out_types) {
   return Result::Ok;
 }
 
-Result JSONParser::ParseConst(Type* out_type, Value* out_value) {
+Result JSONParser::ParseConst(TypedValue* out_value) {
   std::string type_str;
   std::string value_str;
   EXPECT("{");
@@ -502,11 +500,10 @@ Result JSONParser::ParseConst(Type* out_type, Value* out_value) {
   PARSE_KEY_STRING_VALUE("value", &value_str);
   EXPECT("}");
 
-  return ParseConstValue(out_type, out_value, type_str, value_str);
+  return ParseConstValue(out_value, type_str, value_str);
 }
 
-Result JSONParser::ParseConstValue(Type* out_type,
-                                   Value* out_value,
+Result JSONParser::ParseConstValue(TypedValue* out_value,
                                    string_view type_str,
                                    string_view value_str) {
   const char* value_start = value_str.data();
@@ -518,8 +515,8 @@ Result JSONParser::ParseConstValue(Type* out_type,
       PrintError("invalid i32 literal");
       return Result::Error;
     }
-    *out_type = ValueType::I32;
-    out_value->Set(value);
+    out_value->type = ValueType::I32;
+    out_value->value.Set(value);
   } else if (type_str == "f32") {
     uint32_t value_bits;
     if (Failed(ParseInt32(value_start, value_end, &value_bits,
@@ -527,8 +524,8 @@ Result JSONParser::ParseConstValue(Type* out_type,
       PrintError("invalid f32 literal");
       return Result::Error;
     }
-    *out_type = ValueType::F32;
-    out_value->Set(Bitcast<f32>(value_bits));
+    out_value->type = ValueType::F32;
+    out_value->value.Set(Bitcast<f32>(value_bits));
   } else if (type_str == "i64") {
     uint64_t value;
     if (Failed(ParseInt64(value_start, value_end, &value,
@@ -536,8 +533,8 @@ Result JSONParser::ParseConstValue(Type* out_type,
       PrintError("invalid i64 literal");
       return Result::Error;
     }
-    *out_type = ValueType::I64;
-    out_value->Set(value);
+    out_value->type = ValueType::I64;
+    out_value->value.Set(value);
   } else if (type_str == "f64") {
     uint64_t value_bits;
     if (Failed((ParseInt64(value_start, value_end, &value_bits,
@@ -545,19 +542,19 @@ Result JSONParser::ParseConstValue(Type* out_type,
       PrintError("invalid f64 literal");
       return Result::Error;
     }
-    *out_type = ValueType::F64;
-    out_value->Set(Bitcast<f64>(value_bits));
+    out_value->type = ValueType::F64;
+    out_value->value.Set(Bitcast<f64>(value_bits));
   } else if (type_str == "v128") {
     v128 value_bits;
     if (Failed(ParseUint128(value_start, value_end, &value_bits))) {
       PrintError("invalid v128 literal");
       return Result::Error;
     }
-    *out_type = ValueType::V128;
-    out_value->Set(value_bits);
+    out_value->type = ValueType::V128;
+    out_value->value.Set(value_bits);
   } else if (type_str == "nullref") {
-    *out_type = ValueType::Nullref;
-    out_value->Set(Ref::Null);
+    out_value->type = ValueType::Nullref;
+    out_value->value.Set(Ref::Null);
   } else if (type_str == "hostref") {
     uint32_t value;
     if (Failed(ParseInt32(value_start, value_end, &value,
@@ -565,10 +562,10 @@ Result JSONParser::ParseConstValue(Type* out_type,
       PrintError("invalid hostref literal");
       return Result::Error;
     }
-    *out_type = ValueType::Hostref;
+    out_value->type = ValueType::Hostref;
     // TODO: hack, just whatever ref is at this index; but skip null (which is
     // always 0).
-    out_value->Set(Ref{value + 1});
+    out_value->value.Set(Ref{value + 1});
   } else if (type_str == "funcref") {
     uint32_t value;
     if (Failed(ParseInt32(value_start, value_end, &value,
@@ -576,8 +573,8 @@ Result JSONParser::ParseConstValue(Type* out_type,
       PrintError("invalid funcref literal");
       return Result::Error;
     }
-    *out_type = ValueType::Funcref;
-    out_value->Set(Ref{value});
+    out_value->type = ValueType::Funcref;
+    out_value->value.Set(Ref{value});
   } else {
     PrintError("unknown concrete type: \"%s\"", type_str.to_string().c_str());
     return Result::Error;
@@ -596,7 +593,7 @@ Result JSONParser::ParseExpectedValue(ExpectedValue* out_value) {
   EXPECT("}");
 
   if (type_str == "f32" || type_str == "f64") {
-    out_value->type = type_str == "f32" ? ValueType::F32 : ValueType::F64;
+    out_value->value.type = type_str == "f32" ? ValueType::F32 : ValueType::F64;
     if (value_str == "nan:canonical") {
       out_value->is_expected_nan = true;
       out_value->expectedNan = ExpectedNan::Canonical;
@@ -609,8 +606,7 @@ Result JSONParser::ParseExpectedValue(ExpectedValue* out_value) {
   }
 
   out_value->is_expected_nan = false;
-  return ParseConstValue(&out_value->type, &out_value->value, type_str,
-                         value_str);
+  return ParseConstValue(&out_value->value, type_str, value_str);
 }
 
 Result JSONParser::ParseExpectedValues(
@@ -638,11 +634,10 @@ Result JSONParser::ParseConstVector(ValueTypes* out_types, Values* out_values) {
     if (!first) {
       EXPECT(",");
     }
-    ValueType type;
-    Value value;
-    CHECK_RESULT(ParseConst(&type, &value));
-    out_types->push_back(type);
-    out_values->push_back(value);
+    TypedValue tv;
+    CHECK_RESULT(ParseConst(&tv));
+    out_types->push_back(tv.type);
+    out_values->push_back(tv.value);
     first = false;
   }
   return Result::Ok;
@@ -900,7 +895,7 @@ class CommandRunner {
   Extern::Ptr GetImport(const std::string&, const std::string&);
   void PopulateImports(const interp2::Module::Ptr&, RefVec*);
   void PopulateExports(const Instance::Ptr&, ExportMap*);
-  bool ValuesAreEqual(ValueType type, Value expected, Value actual);
+  bool ValuesAreEqual(TypedValue expected, TypedValue actual);
 
   Result OnModuleCommand(const ModuleCommand*);
   Result OnActionCommand(const ActionCommand*);
@@ -1064,9 +1059,7 @@ ActionResult CommandRunner::RunAction(int line_number,
       func->Call(store_, action->args, result.values, &result.trap,
                  s_trace_stream);
       result.types = func->func_type().results;
-      // TODO: format
-      if (verbose == RunVerbosity::Verbose)
-      {
+      if (verbose == RunVerbosity::Verbose) {
         WriteCall(s_stdout_stream.get(), action->field_name, func->func_type(),
                   action->args, result.values, result.trap);
       }
@@ -1338,33 +1331,32 @@ Result CommandRunner::OnAssertUninstantiableCommand(
   return Result::Ok;
 }
 
-bool CommandRunner::ValuesAreEqual(ValueType type,
-                                   Value expected,
-                                   Value actual) {
-  switch (type) {
+bool CommandRunner::ValuesAreEqual(TypedValue expected, TypedValue actual) {
+  assert(expected.type == actual.type || IsReference(expected.type));
+  switch (expected.type) {
     case Type::I32:
-      return expected.Get<u32>() == actual.Get<u32>();
+      return expected.value.Get<u32>() == actual.value.Get<u32>();
 
     case Type::F32:
-      return Bitcast<u32>(expected.Get<f32>()) ==
-             Bitcast<u32>(actual.Get<f32>());
+      return Bitcast<u32>(expected.value.Get<f32>()) ==
+             Bitcast<u32>(actual.value.Get<f32>());
 
     case Type::I64:
-      return expected.Get<u64>() == actual.Get<u64>();
+      return expected.value.Get<u64>() == actual.value.Get<u64>();
 
     case Type::F64:
-      return Bitcast<u64>(expected.Get<f64>()) ==
-             Bitcast<u64>(actual.Get<f64>());
+      return Bitcast<u64>(expected.value.Get<f64>()) ==
+             Bitcast<u64>(actual.value.Get<f64>());
 
     case Type::V128:
-      return expected.Get<v128>() == actual.Get<v128>();
+      return expected.value.Get<v128>() == actual.value.Get<v128>();
 
     case Type::Nullref:
-      return actual.Get<Ref>() == Ref::Null;
+      return actual.value.Get<Ref>() == Ref::Null;
 
     case Type::Funcref:
     case Type::Hostref:
-      return expected.Get<Ref>() == actual.Get<Ref>();
+      return expected.value.Get<Ref>() == actual.value.Get<Ref>();
 
     default:
       WABT_UNREACHABLE;
@@ -1417,46 +1409,44 @@ Result CommandRunner::OnAssertReturnCommand(
   Result result = Result::Ok;
   for (size_t i = 0; i < action_result.values.size(); ++i) {
     const ExpectedValue& expected = command->expected[i];
-    ValueType expected_type = expected.type;
-    const Value& actual = action_result.values[i];
-    ValueType actual_type = action_result.types[i];
+    TypedValue actual{action_result.types[i], action_result.values[i]};
 
     if (expected.is_expected_nan) {
       bool is_nan;
       if (expected.expectedNan == ExpectedNan::Arithmetic) {
-        if (expected_type == Type::F64) {
-          is_nan = IsArithmeticNan(actual.Get<f64>());
+        if (expected.value.type == Type::F64) {
+          is_nan = IsArithmeticNan(actual.value.Get<f64>());
         } else {
-          is_nan = IsArithmeticNan(actual.Get<f32>());
+          is_nan = IsArithmeticNan(actual.value.Get<f32>());
         }
       } else if (expected.expectedNan == ExpectedNan::Canonical) {
-        if (expected_type == Type::F64) {
-          is_nan = IsCanonicalNan(actual.Get<f64>());
+        if (expected.value.type == Type::F64) {
+          is_nan = IsCanonicalNan(actual.value.Get<f64>());
         } else {
-          is_nan = IsCanonicalNan(actual.Get<f32>());
+          is_nan = IsCanonicalNan(actual.value.Get<f32>());
         }
       } else {
         WABT_UNREACHABLE;
       }
       if (!is_nan) {
         PrintError(command->line, "expected result to be nan, got %s",
-                   TypedValueToString(actual_type, actual).c_str());
+                   TypedValueToString(actual).c_str());
         result = Result::Error;
       }
-    } else if (expected_type == Type::Funcref) {
-      if (!store_.HasValueType(actual.Get<Ref>(), Type::Funcref)) {
+    } else if (expected.value.type == Type::Funcref) {
+      if (!store_.HasValueType(actual.value.Get<Ref>(), Type::Funcref)) {
         PrintError(command->line,
                    "mismatch in result %" PRIzd
                    " of assert_return: expected funcref, got %s",
-                   i, TypedValueToString(actual_type, actual).c_str());
+                   i, TypedValueToString(actual).c_str());
       }
     } else {
-      if (!ValuesAreEqual(expected_type, expected.value, actual)) {
+      if (!ValuesAreEqual(expected.value, actual)) {
         PrintError(command->line,
                    "mismatch in result %" PRIzd
                    " of assert_return: expected %s, got %s",
-                   i, TypedValueToString(expected_type, expected.value).c_str(),
-                   TypedValueToString(actual_type, actual).c_str());
+                   i, TypedValueToString(expected.value).c_str(),
+                   TypedValueToString(actual).c_str());
         result = Result::Error;
       }
     }

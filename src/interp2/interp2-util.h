@@ -18,6 +18,7 @@
 #define WABT_INTERP2_UTIL_H_
 
 #include <string>
+#include <vector>
 
 #include "src/interp2/interp2.h"
 #include "src/string-view.h"
@@ -28,13 +29,11 @@ class Stream;
 
 namespace interp2 {
 
-std::string TypedValueToString(ValueType type, const Value& val);
+std::string TypedValueToString(const TypedValue&);
 
-void WriteValue(Stream* stream, ValueType type, const Value& value);
+void WriteValue(Stream* stream, const TypedValue&);
 
-void WriteValues(Stream* stream,
-                 const ValueTypes& types,
-                 const Values& values);
+void WriteValues(Stream* stream, const ValueTypes&, const Values&);
 
 void WriteTrap(Stream* stream, const char* desc, const Trap::Ptr&);
 
