@@ -31,6 +31,20 @@ namespace interp2 {
 template <
     typename T,
     typename std::enable_if<!std::is_floating_point<T>::value, int>::type = 0>
+bool IsNaN(T val) {
+  return false;
+}
+
+template <
+    typename T,
+    typename std::enable_if<std::is_floating_point<T>::value, int>::type = 0>
+bool IsNaN(T val) {
+  return std::isnan(val);
+}
+
+template <
+    typename T,
+    typename std::enable_if<!std::is_floating_point<T>::value, int>::type = 0>
 T CanonNaN(T val) {
   return val;
 }

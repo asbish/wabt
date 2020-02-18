@@ -1744,7 +1744,8 @@ template <typename R, typename T>
 RunResult Thread::DoConvert(Trap::Ptr* out_trap) {
   auto val = Pop<T>();
   if (std::is_integral<R>::value && std::is_floating_point<T>::value) {
-    TRAP_IF(std::isnan(val), "invalid conversion to integer");
+    // Don't use std::isnan here because T may be a non-floating-point type.
+    TRAP_IF(IsNaN(val), "invalid conversion to integer");
   }
   TRAP_UNLESS(CanConvert<R>(val), "integer overflow");
   Push<R>(Convert<R>(val));
