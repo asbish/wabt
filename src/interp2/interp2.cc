@@ -72,7 +72,7 @@ Result Match(const Limits& expected,
 }
 
 //// FuncType ////
-std::unique_ptr<ExternType> FuncType::Clone() {
+std::unique_ptr<ExternType> FuncType::Clone() const {
   return MakeUnique<FuncType>(*this);
 }
 
@@ -89,7 +89,7 @@ Result Match(const FuncType& expected,
 }
 
 //// TableType ////
-std::unique_ptr<ExternType> TableType::Clone() {
+std::unique_ptr<ExternType> TableType::Clone() const {
   return MakeUnique<TableType>(*this);
 }
 
@@ -111,7 +111,7 @@ Result Match(const TableType& expected,
 }
 
 //// MemoryType ////
-std::unique_ptr<ExternType> MemoryType::Clone() {
+std::unique_ptr<ExternType> MemoryType::Clone() const {
   return MakeUnique<MemoryType>(*this);
 }
 
@@ -122,7 +122,7 @@ Result Match(const MemoryType& expected,
 }
 
 //// GlobalType ////
-std::unique_ptr<ExternType> GlobalType::Clone() {
+std::unique_ptr<ExternType> GlobalType::Clone() const {
   return MakeUnique<GlobalType>(*this);
 }
 
@@ -149,7 +149,7 @@ Result Match(const GlobalType& expected,
 }
 
 //// EventType ////
-std::unique_ptr<ExternType> EventType::Clone() {
+std::unique_ptr<ExternType> EventType::Clone() const {
   return MakeUnique<EventType>(*this);
 }
 
@@ -217,6 +217,17 @@ bool Store::HasValueType(Ref ref, ValueType type) const {
   }
 }
 
+ValueType Store::GetValueType(Ref ref) const {
+  Object* obj = objects_.Get(ref.index).get();
+  switch (obj->kind()) {
+    case ObjectKind::Null:        return ValueType::Nullref;
+    case ObjectKind::Foreign:     return ValueType::Hostref;
+    case ObjectKind::DefinedFunc:
+    case ObjectKind::HostFunc:    return ValueType::Funcref;
+    default:                      return ValueType::Anyref;
+  }
+}
+
 Store::RootList::Index Store::NewRoot(Ref ref) {
   return roots_.New(ref);
 }
@@ -252,7 +263,7 @@ void Store::Mark(const RefVec& refs) {
 //// Object ////
 Object::~Object() {
   if (finalizer_) {
-    finalizer_();
+    finalizer_(this);
   }
 }
 
@@ -1044,7 +1055,7 @@ RunResult Thread::StepInternal(Trap::Ptr* out_trap) {
       TRAP_IF(new_func_ref == Ref::Null, "uninitialized table element");
       Func::Ptr new_func{store_, new_func_ref};
       TRAP_IF(
-          Failed(Match(new_func->func_type(), func_type, nullptr)),
+          Failed(Match(new_func->type(), func_type, nullptr)),
           "indirect call signature mismatch");  // TODO: don't use "signature"
       if (instr.op == O::ReturnCallIndirect) {
         return DoReturnCall(new_func, out_trap);
@@ -1637,7 +1648,7 @@ RunResult Thread::StepInternal(Trap::Ptr* out_trap) {
 
 RunResult Thread::DoCall(const Func::Ptr& func, Trap::Ptr* out_trap) {
   if (auto* host_func = dyn_cast<HostFunc>(func.get())) {
-    auto& func_type = host_func->func_type();
+    auto& func_type = host_func->type();
 
     Values params;
     PopValues(func_type.params, &params);
@@ -2173,9 +2184,9 @@ ValueType Thread::TraceSource::GetLocalType(Index stack_slot) {
   // local1 can be accessed with stack_slot 4, and param1 can be accessed with
   // stack_slot 6. The formula below takes these values into account to convert
   // the stack_slot into a local index.
-  Index local_index = (thread_->values_.size() - frame.values +
-                       func->func_type().params.size()) -
-                      stack_slot;
+  Index local_index =
+      (thread_->values_.size() - frame.values + func->type().params.size()) -
+      stack_slot;
   return func->desc().GetLocalType(local_index);
 }
 

@@ -258,6 +258,18 @@ RefPtr<T>& RefPtr<T>::operator=(RefPtr&& other) {
 }
 
 template <typename T>
+template <typename U>
+RefPtr<U> RefPtr<T>::As() {
+  static_assert(std::is_base_of<T, U>::value, "T must be base class of U");
+  assert(store_->Is<U>(obj_->self()));
+  RefPtr<U> result;
+  result.obj_ = static_cast<U*>(obj_);
+  result.store_ = store_;
+  result.root_index_ = store_->CopyRoot(root_index_);
+  return result;
+}
+
+template <typename T>
 bool RefPtr<T>::empty() const {
   return obj_ != nullptr;
 }
@@ -295,6 +307,21 @@ RefPtr<T>::operator bool() const {
 template <typename T>
 Ref RefPtr<T>::ref() const {
   return store_ ? store_->roots_.Get(root_index_) : Ref::Null;
+}
+
+template <typename T>
+Store* RefPtr<T>::store() const {
+  return store_;
+}
+
+template <typename U, typename V>
+bool operator==(const RefPtr<U>& lhs, const RefPtr<V>& rhs) {
+  return lhs.obj_->self() == rhs.obj_->self();
+}
+
+template <typename U, typename V>
+bool operator!=(const RefPtr<U>& lhs, const RefPtr<V>& rhs) {
+  return lhs.obj_->self() != rhs.obj_->self();
 }
 
 //// ValueType ////
@@ -422,6 +449,14 @@ inline Ref Object::self() const {
   return self_;
 }
 
+inline void* Object::host_info() const {
+  return host_info_;
+}
+
+inline void Object::set_host_info(void* host_info) {
+  host_info_ = host_info;
+}
+
 inline Finalizer Object::get_finalizer() const {
   return finalizer_;
 }
@@ -492,7 +527,11 @@ inline bool Func::classof(const Object* obj) {
   }
 }
 
-inline const FuncType& Func::func_type() const {
+inline const ExternType& Func::extern_type() {
+  return type_;
+}
+
+inline const FuncType& Func::type() const {
   return type_;
 }
 
@@ -537,6 +576,10 @@ inline bool Table::classof(const Object* obj) {
 // static
 inline Table::Ptr Table::New(Store& store, TableType type) {
   return store.Alloc<Table>(store, type);
+}
+
+inline const ExternType& Table::extern_type() {
+  return type_;
 }
 
 inline const TableType& Table::type() const {
@@ -641,12 +684,24 @@ Result Memory::AtomicRmwCmpxchg(u32 offset,
   return Result::Ok;
 }
 
+inline u8* Memory::UnsafeData() {
+  return data_.data();
+}
+
 inline u32 Memory::ByteSize() const {
   return data_.size();
 }
 
 inline u32 Memory::PageSize() const {
   return pages_;
+}
+
+inline const ExternType& Memory::extern_type() {
+  return type_;
+}
+
+inline const MemoryType& Memory::type() const {
+  return type_;
 }
 
 //// Global ////
@@ -688,6 +743,10 @@ Result Global::Set(T val) {
   return Result::Error;
 }
 
+inline const ExternType& Global::extern_type() {
+  return type_;
+}
+
 inline const GlobalType& Global::type() const {
   return type_;
 }
@@ -701,6 +760,14 @@ inline bool Event::classof(const Object* obj) {
 // static
 inline Event::Ptr Event::New(Store& store, EventType type) {
   return store.Alloc<Event>(store, type);
+}
+
+inline const ExternType& Event::extern_type() {
+  return type_;
+}
+
+inline const EventType& Event::type() const {
+  return type_;
 }
 
 //// ElemSegment ////

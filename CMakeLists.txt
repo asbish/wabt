@@ -325,7 +325,7 @@ set(WABT_LIBRARY_SRC
 add_library(wabt STATIC ${WABT_LIBRARY_SRC})
 
 # libwasm, which implenents the wasm C API
-add_library(wasm SHARED ${WABT_LIBRARY_SRC} src/interp/interp-wasm-c-api.cc)
+add_library(wasm SHARED ${WABT_LIBRARY_SRC} src/interp2/interp2-wasm-c-api.cc)
 target_link_libraries(wasm wabt)
 target_include_directories(wasm PUBLIC third_party/wasm-c-api/include)
 if (COMPILER_IS_MSVC)

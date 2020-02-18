@@ -167,7 +167,7 @@ Result Match(const Limits& expected,
 struct ExternType {
   explicit ExternType(ExternKind);
   virtual ~ExternType() {}
-  virtual std::unique_ptr<ExternType> Clone() = 0;
+  virtual std::unique_ptr<ExternType> Clone() const = 0;
 
   ExternKind kind;
 };
@@ -178,7 +178,7 @@ struct FuncType : ExternType {
 
   explicit FuncType(ValueTypes params, ValueTypes results);
 
-  std::unique_ptr<ExternType> Clone() override;
+  std::unique_ptr<ExternType> Clone() const override;
 
   friend Result Match(const FuncType& expected,
                       const FuncType& actual,
@@ -194,7 +194,7 @@ struct TableType : ExternType {
 
   explicit TableType(ValueType, Limits);
 
-  std::unique_ptr<ExternType> Clone() override;
+  std::unique_ptr<ExternType> Clone() const override;
 
   friend Result Match(const TableType& expected,
                       const TableType& actual,
@@ -210,7 +210,7 @@ struct MemoryType : ExternType {
 
   explicit MemoryType(Limits);
 
-  std::unique_ptr<ExternType> Clone() override;
+  std::unique_ptr<ExternType> Clone() const override;
 
   friend Result Match(const MemoryType& expected,
                       const MemoryType& actual,
@@ -225,7 +225,7 @@ struct GlobalType : ExternType {
 
   explicit GlobalType(ValueType, Mutability);
 
-  std::unique_ptr<ExternType> Clone() override;
+  std::unique_ptr<ExternType> Clone() const override;
 
   friend Result Match(const GlobalType& expected,
                       const GlobalType& actual,
@@ -241,7 +241,7 @@ struct EventType : ExternType {
 
   explicit EventType(EventAttr, const ValueTypes&);
 
-  std::unique_ptr<ExternType> Clone() override;
+  std::unique_ptr<ExternType> Clone() const override;
 
   friend Result Match(const EventType& expected,
                       const EventType& actual,
@@ -403,6 +403,7 @@ class Store {
 
   bool IsValid(Ref) const;
   bool HasValueType(Ref, ValueType) const;
+  ValueType GetValueType(Ref) const;
   template <typename T>
   bool Is(Ref) const;
 
@@ -453,6 +454,9 @@ class RefPtr {
   template <typename U>
   RefPtr& operator=(RefPtr&&);
 
+  template <typename U>
+  RefPtr<U> As();
+
   bool empty() const;
   void reset();
 
@@ -462,6 +466,12 @@ class RefPtr {
   explicit operator bool() const;
 
   Ref ref() const;
+  Store* store() const;
+
+  template <typename U, typename V>
+  friend bool operator==(const RefPtr<U>& lhs, const RefPtr<V>& rhs);
+  template <typename U, typename V>
+  friend bool operator!=(const RefPtr<U>& lhs, const RefPtr<V>& rhs);
 
  private:
   template <typename U>
@@ -505,7 +515,7 @@ struct TypedValue {
 };
 using TypedValues = std::vector<TypedValue>;
 
-using Finalizer = std::function<void()>;
+using Finalizer = std::function<void(Object*)>;
 
 class Object {
  public:
@@ -520,6 +530,9 @@ class Object {
   ObjectKind kind() const;
   Ref self() const;
 
+  void* host_info() const;
+  void set_host_info(void*);
+
   Finalizer get_finalizer() const;
   void set_finalizer(Finalizer);
 
@@ -529,7 +542,8 @@ class Object {
   virtual void Mark(Store&) {}
 
   ObjectKind kind_;
-  Finalizer finalizer_;
+  Finalizer finalizer_ = nullptr;
+  void* host_info_ = nullptr;
   Ref self_ = Ref::Null;
 };
 
@@ -580,6 +594,7 @@ class Extern : public Object {
   using Ptr = RefPtr<Extern>;
 
   virtual Result Match(Store&, const ImportType&, Trap::Ptr* out_trap) = 0;
+  virtual const ExternType& extern_type() = 0;
 
  protected:
   friend Store;
@@ -609,7 +624,8 @@ class Func : public Extern {
               Trap::Ptr* out_trap,
               Stream* = nullptr);
 
-  const FuncType& func_type() const;
+  const ExternType& extern_type() override;
+  const FuncType& type() const;
 
  protected:
   explicit Func(ObjectKind, FuncType);
@@ -708,6 +724,7 @@ class Table : public Extern {
   // Unsafe API.
   Ref UnsafeGet(u32 offset) const;
 
+  const ExternType& extern_type() override;
   const TableType& type() const;
   const RefVec& elements() const;
   u32 size() const;
@@ -763,6 +780,10 @@ class Memory : public Extern {
   // Unsafe API.
   template <typename T>
   T UnsafeLoad(u32 offset, u32 addend) const;
+  u8* UnsafeData();
+
+  const ExternType& extern_type() override;
+  const MemoryType& type() const;
 
  private:
   friend class Store;
@@ -795,6 +816,7 @@ class Global : public Extern {
   T UnsafeGet() const;
   void UnsafeSet(Value);
 
+  const ExternType& extern_type() override;
   const GlobalType& type() const;
 
  private:
@@ -815,6 +837,9 @@ class Event : public Extern {
   static Event::Ptr New(Store&, EventType);
 
   Result Match(Store&, const ImportType&, Trap::Ptr* out_trap) override;
+
+  const ExternType& extern_type() override;
+  const EventType& type() const;
 
  private:
   friend Store;
