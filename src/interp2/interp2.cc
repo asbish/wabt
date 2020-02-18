@@ -1747,7 +1747,7 @@ RunResult Thread::DoConvert(Trap::Ptr* out_trap) {
     TRAP_IF(std::isnan(val), "invalid conversion to integer");
   }
   TRAP_UNLESS(CanConvert<R>(val), "integer overflow");
-  Push<R>(static_cast<R>(val));
+  Push<R>(Convert<R>(val));
   return RunResult::Ok;
 }
 

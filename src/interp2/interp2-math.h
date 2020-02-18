@@ -198,6 +198,27 @@ R Convert(T val) {
   return static_cast<R>(val);
 }
 
+template <>
+inline f32 Convert(f64 val) {
+  // The WebAssembly rounding mode means that these values (which are > F32_MAX)
+  // should be rounded to F32_MAX and not set to infinity. Unfortunately, UBSAN
+  // complains that the value is not representable as a float, so we'll special
+  // case them.
+  const f64 kMin = 3.4028234663852886e38;
+  const f64 kMax = 3.4028235677973366e38;
+  if (WABT_LIKELY(val >= -kMin && val <= kMin)) {
+    return val;
+  } else if (WABT_UNLIKELY(val > kMin && val < kMax)) {
+    return std::numeric_limits<f32>::max();
+  } else if (WABT_UNLIKELY(val > -kMax && val < -kMin)) {
+    return -std::numeric_limits<f32>::max();
+  } else if (WABT_UNLIKELY(std::isnan(val))) {
+    return std::numeric_limits<f32>::quiet_NaN();
+  } else {
+    return std::copysign(std::numeric_limits<f32>::infinity(), val);
+  }
+}
+
 template <typename T, int N>
 T IntExtend(T val) {
   // Hacker's delight 2.6 - sign extension
