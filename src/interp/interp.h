@@ -955,7 +955,7 @@ enum class RunResult {
   Trap,
 };
 
-// TODO: kinda weird to have a thread as an object, but it makes reference
+// TODO: Kinda weird to have a thread as an object, but it makes reference
 // marking simpler.
 class Thread : public Object {
  public:
