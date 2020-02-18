@@ -474,9 +474,15 @@ Result Table::Copy(Store& store,
   if (dst.IsValidRange(dst_offset, size) &&
       src.IsValidRange(src_offset, size) &&
       TypesMatch(dst.type_.element, src.type_.element)) {
-    std::move(src.elements_.begin() + src_offset,
-              src.elements_.begin() + src_offset + size,
-              dst.elements_.begin() + dst_offset);
+    auto src_begin = src.elements_.begin() + src_offset;
+    auto src_end = src_begin + size;
+    auto dst_begin = dst.elements_.begin() + dst_offset;
+    auto dst_end = dst_begin + size;
+    if (dst.self() == src.self() && src_begin < dst_begin) {
+      std::move_backward(src_begin, src_end, dst_end);
+    } else {
+      std::move(src_begin, src_end, dst_begin);
+    }
     return Result::Ok;
   }
   return Result::Error;
@@ -536,9 +542,15 @@ Result Memory::Copy(Memory& dst,
                     u32 size) {
   if (dst.IsValidAccess(dst_offset, 0, size) &&
       src.IsValidAccess(src_offset, 0, size)) {
-    std::move(src.data_.begin() + src_offset,
-              src.data_.begin() + src_offset + size,
-              dst.data_.begin() + dst_offset);
+    auto src_begin = src.data_.begin() + src_offset;
+    auto src_end = src_begin + size;
+    auto dst_begin = dst.data_.begin() + dst_offset;
+    auto dst_end = dst_begin + size;
+    if (src.self() == dst.self() && src_begin < dst_begin) {
+      std::move_backward(src_begin, src_end, dst_end);
+    } else {
+      std::move(src_begin, src_end, dst_begin);
+    }
     return Result::Ok;
   }
   return Result::Error;
@@ -1320,7 +1332,8 @@ RunResult Thread::StepInternal(Trap::Ptr* out_trap) {
           break;
         }
       }
-      std::move(values_.end() - keep, values_.end(), values_.end() - drop - keep);
+      std::move(values_.end() - keep, values_.end(),
+                values_.end() - drop - keep);
       values_.resize(values_.size() - drop);
       break;
     }

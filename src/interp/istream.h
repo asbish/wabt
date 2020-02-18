@@ -34,7 +34,6 @@ using u32 = uint32_t;
 using u64 = uint64_t;
 using f32 = float;
 using f64 = double;
-using v128 = ::v128;
 
 using Buffer = std::vector<u8>;
 
