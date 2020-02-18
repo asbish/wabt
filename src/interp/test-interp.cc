@@ -48,7 +48,7 @@ class InterpTest : public ::testing::Test {
     ASSERT_TRUE(inst_) << trap->message();
   }
 
-  DefinedFunc::Ptr GetFuncExport(Index index) {
+  DefinedFunc::Ptr GetFuncExport(interp::Index index) {
     EXPECT_LT(index, inst_->exports().size());
     return store_.UnsafeGet<DefinedFunc>(inst_->exports()[index]);
   }
