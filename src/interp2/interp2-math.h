@@ -72,7 +72,7 @@ template <typename T> T IntClz(T val) { return Clz(val); }
 template <typename T> T IntCtz(T val) { return Ctz(val); }
 template <typename T> T IntPopcnt(T val) { return Popcount(val); }
 template <typename T> T IntNot(T val) { return ~val; }
-template <typename T> T Neg(T val) { return -val; }
+template <typename T> T IntNeg(T val) { return ~val + 1; }
 template <typename T> T Add(T lhs, T rhs) { return CanonNaN(lhs + rhs); }
 template <typename T> T Sub(T lhs, T rhs) { return CanonNaN(lhs - rhs); }
 template <typename T> T Mul(T lhs, T rhs) { return CanonNaN(lhs * rhs); }
@@ -153,6 +153,7 @@ RunResult IntRem(T lhs, T rhs, T* out, std::string* out_msg) {
 }
 
 template <typename T> T FloatAbs(T val) { return std::abs(val); }
+template <typename T> T FloatNeg(T val) { return -val; }
 template <typename T> T FloatCeil(T val) { return CanonNaN(std::ceil(val)); }
 template <typename T> T FloatFloor(T val) { return CanonNaN(std::floor(val)); }
 template <typename T> T FloatTrunc(T val) { return CanonNaN(std::trunc(val)); }

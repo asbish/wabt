@@ -56,7 +56,6 @@ using s64 = int64_t;
 using u64 = uint64_t;
 using f32 = float;
 using f64 = double;
-using v128 = ::v128;
 
 using Buffer = std::vector<u8>;
 
@@ -158,7 +157,6 @@ using u32x2 = Simd<u32, 2>;
 
 //// Types ////
 
-using Limits = wabt::Limits;
 bool CanGrow(const Limits&, u32 old_size, u32 delta, u32* new_size);
 Result Match(const Limits& expected,
              const Limits& actual,

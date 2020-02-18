@@ -29,6 +29,7 @@ using namespace wabt::interp2;
 #define own
 
 #ifndef NDEBUG
+#define TRACE0() TRACE("")
 #define TRACE(str, ...) \
   fprintf(stderr, "CAPI: [%s] " str "\n", __func__, ##__VA_ARGS__)
 #define TRACE_NO_NL(str, ...) \
@@ -184,9 +185,11 @@ std::unique_ptr<wasm_externtype_t> wasm_externtype_t::New(
       return MakeUnique<wasm_globaltype_t>(*cast<GlobalType>(ptr.get()));
 
     case ExternKind::Event:
-      assert(false);
-      return {};
+      break;
   }
+
+  assert(false);
+  return {};
 }
 
 struct wasm_importtype_t {
@@ -721,12 +724,6 @@ const wasm_valtype_vec_t* wasm_functype_results(const wasm_functype_t* f) {
   return &f->results;
 }
 
-static void delete_vals(wasm_val_t values[], size_t count) {
-  for (size_t i = 0; i < count; ++i) {
-    wasm_val_delete(&values[i]);
-  }
-}
-
 // wasm_func
 own wasm_func_t* wasm_func_new(wasm_store_t* store,
                                const wasm_functype_t* type,
@@ -734,18 +731,21 @@ own wasm_func_t* wasm_func_new(wasm_store_t* store,
   FuncType wabt_type = *type->As<FuncType>();
   auto lambda = [=](const Values& wabt_params, Values& wabt_results,
                     Trap::Ptr* out_trap) -> Result {
-    wasm_val_t params[wabt_params.size()];
-    wasm_val_t results[wabt_results.size()];
-    FromWabtValues(store->I, params, wabt_type.params, wabt_params);
-    auto trap = callback(params, results);
-    delete_vals(params, wabt_params.size());
+    wasm_val_vec_t params, results;
+    wasm_val_vec_new_uninitialized(&params, wabt_params.size());
+    wasm_val_vec_new_uninitialized(&results, wabt_results.size());
+    FromWabtValues(store->I, params.data, wabt_type.params, wabt_params);
+    auto trap = callback(params.data, results.data);
+    wasm_val_vec_delete(&params);
     if (trap) {
       *out_trap = trap->I.As<Trap>();
       wasm_trap_delete(trap);
+      // Can't use wasm_val_vec_delete since it wasn't populated.
+      delete[] results.data;
       return Result::Error;
     }
-    wabt_results = ToWabtValues(results, wabt_results.size());
-    delete_vals(results, wabt_results.size());
+    wabt_results = ToWabtValues(results.data, results.size);
+    wasm_val_vec_delete(&results);
     return Result::Ok;
   };
 
@@ -760,18 +760,21 @@ own wasm_func_t* wasm_func_new_with_env(wasm_store_t* store,
   FuncType wabt_type = *type->As<FuncType>();
   auto lambda = [=](const Values& wabt_params, Values& wabt_results,
                     Trap::Ptr* out_trap) -> Result {
-    wasm_val_t params[wabt_params.size()];
-    wasm_val_t results[wabt_results.size()];
-    FromWabtValues(store->I, params, wabt_type.params, wabt_params);
-    auto trap = callback(env, params, results);
-    delete_vals(params, wabt_params.size());
+    wasm_val_vec_t params, results;
+    wasm_val_vec_new_uninitialized(&params, wabt_params.size());
+    wasm_val_vec_new_uninitialized(&results, wabt_results.size());
+    FromWabtValues(store->I, params.data, wabt_type.params, wabt_params);
+    auto trap = callback(env, params.data, results.data);
+    wasm_val_vec_delete(&params);
     if (trap) {
       *out_trap = trap->I.As<Trap>();
       wasm_trap_delete(trap);
+      // Can't use wasm_val_vec_delete since it wasn't populated.
+      delete[] results.data;
       return Result::Error;
     }
-    wabt_results = ToWabtValues(results, wabt_results.size());
-    delete_vals(results, wabt_results.size());
+    wabt_results = ToWabtValues(results.data, results.size);
+    wasm_val_vec_delete(&results);
     return Result::Ok;
   };
 
@@ -780,7 +783,7 @@ own wasm_func_t* wasm_func_new_with_env(wasm_store_t* store,
 }
 
 own wasm_functype_t* wasm_func_type(const wasm_func_t* func) {
-  TRACE();
+  TRACE0();
   return new wasm_functype_t{func->As<Func>()->type()};
 }
 
@@ -874,14 +877,14 @@ own wasm_globaltype_t* wasm_global_type(const wasm_global_t* global) {
 
 void wasm_global_get(const wasm_global_t* global, own wasm_val_t* out) {
   assert(global);
-  TRACE();
+  TRACE0();
   TypedValue tv{global->As<Global>()->type().type, global->As<Global>()->Get()};
   TRACE(" -> %s", TypedValueToString(tv).c_str());
   *out = FromWabtValue(*global->I.store(), tv);
 }
 
 void wasm_global_set(wasm_global_t* global, const wasm_val_t* val) {
-  TRACE();
+  TRACE0();
   if (wasm_valkind_is_ref(val->kind)) {
     global->As<Global>()->Set(*global->I.store(), val->of.ref->I->self());
   } else {
@@ -935,7 +938,7 @@ bool wasm_table_grow(wasm_table_t* table,
 
 own wasm_memory_t* wasm_memory_new(wasm_store_t* store,
                                    const wasm_memorytype_t* type) {
-  TRACE();
+  TRACE0();
   return new wasm_memory_t{Memory::New(store->I, *type->As<MemoryType>())};
 }
 
@@ -1010,7 +1013,7 @@ own wasm_foreign_t* wasm_foreign_new(wasm_store_t* store) {
 #define WASM_IMPL_OWN(name)                           \
   void wasm_##name##_delete(own wasm_##name##_t* t) { \
     assert(t);                                        \
-    TRACE();                                          \
+    TRACE0();                                         \
     delete t;                                         \
   }
 
@@ -1021,7 +1024,7 @@ WASM_IMPL_OWN(store);
 
 #define WASM_IMPL_VEC_BASE(name, ptr_or_none)                            \
   void wasm_##name##_vec_new_empty(own wasm_##name##_vec_t* out) {       \
-    TRACE();                                                             \
+    TRACE0();                                                            \
     wasm_##name##_vec_new_uninitialized(out, 0);                         \
   }                                                                      \
   void wasm_##name##_vec_new_uninitialized(own wasm_##name##_vec_t* vec, \
@@ -1035,7 +1038,7 @@ WASM_IMPL_OWN(store);
   WASM_IMPL_VEC_BASE(name, )                                            \
   void wasm_##name##_vec_new(own wasm_##name##_vec_t* vec, size_t size, \
                              own wasm_##name##_t const src[]) {         \
-    TRACE();                                                            \
+    TRACE0();                                                           \
     wasm_##name##_vec_new_uninitialized(vec, size);                     \
     memcpy(vec->data, src, size * sizeof(wasm_##name##_t));             \
   }                                                                     \
@@ -1046,7 +1049,7 @@ WASM_IMPL_OWN(store);
     memcpy(out->data, vec->data, vec->size * sizeof(wasm_##name##_t));  \
   }                                                                     \
   void wasm_##name##_vec_delete(own wasm_##name##_vec_t* vec) {         \
-    TRACE();                                                            \
+    TRACE0();                                                           \
     delete[] vec->data;                                                 \
     vec->size = 0;                                                      \
   }
@@ -1058,7 +1061,7 @@ WASM_IMPL_VEC_BASE(val, )
 void wasm_val_vec_new(own wasm_val_vec_t* vec,
                       size_t size,
                       own wasm_val_t const src[]) {
-  TRACE();
+  TRACE0();
   wasm_val_vec_new_uninitialized(vec, size);
   for (size_t i = 0; i < size; ++i) {
     vec->data[i] = src[i];
@@ -1073,11 +1076,20 @@ void wasm_val_vec_copy(own wasm_val_vec_t* out, const wasm_val_vec_t* vec) {
   }
 }
 
+void wasm_val_vec_delete(own wasm_val_vec_t* vec) {
+  TRACE0();
+  for (size_t i = 0; i < vec->size; ++i) {
+    wasm_val_delete(&vec->data[i]);
+  }
+  delete[] vec->data;
+  vec->size = 0;
+}
+
 #define WASM_IMPL_VEC_OWN(name)                                         \
   WASM_IMPL_VEC_BASE(name, *)                                           \
   void wasm_##name##_vec_new(own wasm_##name##_vec_t* vec, size_t size, \
                              own wasm_##name##_t* const src[]) {        \
-    TRACE();                                                            \
+    TRACE0();                                                           \
     wasm_##name##_vec_new_uninitialized(vec, size);                     \
     for (size_t i = 0; i < size; ++i) {                                 \
       vec->data[i] = src[i];                                            \
@@ -1092,7 +1104,7 @@ void wasm_val_vec_copy(own wasm_val_vec_t* out, const wasm_val_vec_t* vec) {
     }                                                                   \
   }                                                                     \
   void wasm_##name##_vec_delete(wasm_##name##_vec_t* vec) {             \
-    TRACE();                                                            \
+    TRACE0();                                                           \
     for (size_t i = 0; i < vec->size; ++i) {                            \
       delete vec->data[i];                                              \
     }                                                                   \
@@ -1107,7 +1119,7 @@ WASM_IMPL_VEC_OWN(extern);
   WASM_IMPL_OWN(name)                                               \
   WASM_IMPL_VEC_OWN(name)                                           \
   own wasm_##name##_t* wasm_##name##_copy(wasm_##name##_t* other) { \
-    TRACE();                                                        \
+    TRACE0();                                                       \
     return new wasm_##name##_t(*other);                             \
   }
 
@@ -1119,7 +1131,7 @@ WASM_IMPL_TYPE(exporttype);
   WASM_IMPL_OWN(name)                                               \
   WASM_IMPL_VEC_OWN(name)                                           \
   own wasm_##name##_t* wasm_##name##_copy(wasm_##name##_t* other) { \
-    TRACE();                                                        \
+    TRACE0();                                                       \
     return static_cast<wasm_##name##_t*>(other->Clone().release()); \
   }
 
@@ -1132,12 +1144,12 @@ WASM_IMPL_TYPE_CLONE(externtype);
 #define WASM_IMPL_REF_BASE(name)                                          \
   WASM_IMPL_OWN(name)                                                     \
   own wasm_##name##_t* wasm_##name##_copy(const wasm_##name##_t* ref) {   \
-    TRACE();                                                              \
+    TRACE0();                                                             \
     return new wasm_##name##_t(*ref);                                     \
   }                                                                       \
   bool wasm_##name##_same(const wasm_##name##_t* ref,                     \
                           const wasm_##name##_t* other) {                 \
-    TRACE();                                                              \
+    TRACE0();                                                             \
     return ref->I == other->I;                                            \
   }                                                                       \
   void* wasm_##name##_get_host_info(const wasm_##name##_t* ref) {         \
