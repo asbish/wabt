@@ -54,10 +54,8 @@ class Interp2Test : public ::testing::Test {
   }
 
   void ExpectBufferStrEq(OutputBuffer& buf, const char* str) {
-    char buf_str[buf.size() + 1];
-    memcpy(buf_str, buf.data.data(), sizeof(buf_str));
-    buf_str[buf.size()] = 0;
-    EXPECT_STREQ(buf_str, str);
+    std::string buf_str(buf.data.begin(), buf.data.end());
+    EXPECT_STREQ(buf_str.c_str(), str);
   }
 
   Store store_;

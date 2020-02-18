@@ -35,6 +35,7 @@ using namespace wabt::interp2;
 #define TRACE_NO_NL(str, ...) \
   fprintf(stderr, "CAPI: [%s] " str, __func__, ##__VA_ARGS__)
 #else
+#define TRACE0(...)
 #define TRACE(...)
 #define TRACE_NO_NL(...)
 #endif
@@ -710,7 +711,7 @@ own wasm_functype_t* wasm_functype_new(own wasm_valtype_vec_t* params,
                                        own wasm_valtype_vec_t* results) {
   TRACE("params=%" PRIzx " args=%" PRIzx, params->size, results->size);
   auto* res = new wasm_functype_t{params, results};
-  TRACE_NO_NL();
+  TRACE_NO_NL("");
   print_sig(*res->As<FuncType>());
   return res;
 }
