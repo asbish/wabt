@@ -22,6 +22,10 @@
 #include <string>
 #include <type_traits>
 
+#if COMPILER_IS_MSVC
+#include <immintrin.h>
+#endif
+
 #include "src/common.h"
 #include "src/interp/interp.h"
 
@@ -152,7 +156,28 @@ RunResult IntRem(T lhs, T rhs, T* out, std::string* out_msg) {
   return RunResult::Ok;
 }
 
-template <typename T> T FloatAbs(T val) { return std::abs(val); }
+#if COMPILER_IS_MSVC
+// Don't use std::abs directly on MSVC, since that seems to lose the NaN tag.
+template <>
+f32 __vectorcall FloatAbs(f32 val) {
+  return _mm_cvtss_f32(_mm_and_ps(
+      _mm_set_ps1(val), _mm_castsi128_ps(_mm_set1_epi32(0x7fffffff))));
+}
+
+template <>
+f64 __vectorcall FloatAbs(f64 val) {
+  return _mm_cvtsd_f64(
+      _mm_and_pd(_mm_set_pd1(val),
+                 _mm_castsi128_pd(_mm_set1_epi64x(0x7fffffffffffffffull))));
+}
+
+#else
+template <typename T>
+T FloatAbs(T val) {
+  return std::abs(val);
+}
+#endif
+
 template <typename T> T FloatNeg(T val) { return -val; }
 template <typename T> T FloatCeil(T val) { return CanonNaN(std::ceil(val)); }
 template <typename T> T FloatFloor(T val) { return CanonNaN(std::floor(val)); }
