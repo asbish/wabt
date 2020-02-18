@@ -157,6 +157,8 @@ RunResult IntRem(T lhs, T rhs, T* out, std::string* out_msg) {
 }
 
 #if COMPILER_IS_MSVC
+template <typename T> T FloatAbs(T val);
+
 // Don't use std::abs directly on MSVC, since that seems to lose the NaN tag.
 template <>
 f32 __vectorcall FloatAbs(f32 val) {
