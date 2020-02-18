@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef WABT_INTERP2_ISTREAM_H_
-#define WABT_INTERP2_ISTREAM_H_
+#ifndef WABT_INTERP_ISTREAM_H_
+#define WABT_INTERP_ISTREAM_H_
 
 #include <cstdint>
 #include <vector>
@@ -26,7 +26,7 @@
 #include "src/stream.h"
 
 namespace wabt {
-namespace interp2 {
+namespace interp {
 
 using u8 = uint8_t;
 using u16 = uint16_t;
@@ -137,7 +137,7 @@ private:
   Buffer data_;
 };
 
-}  // namespace interp2
+}  // namespace interp
 }  // namespace wabt
 
-#endif  // WABT_INTERP2_ISTREAM_H_
+#endif  // WABT_INTERP_ISTREAM_H_

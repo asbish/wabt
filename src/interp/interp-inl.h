@@ -19,7 +19,7 @@
 #include <string>
 
 namespace wabt {
-namespace interp2 {
+namespace interp {
 
 //// Ref ////
 inline Ref::Ref(size_t index) : index(index) {}
@@ -601,7 +601,7 @@ inline bool Memory::classof(const Object* obj) {
 }
 
 // static
-inline Memory::Ptr Memory::New(interp2::Store& store, MemoryType type) {
+inline Memory::Ptr Memory::New(interp::Store& store, MemoryType type) {
   return store.Alloc<Memory>(store, type);
 }
 
@@ -892,5 +892,5 @@ inline Store& Thread::store() {
   return store_;
 }
 
-}  // namespace interp2
+}  // namespace interp
 }  // namespace wabt

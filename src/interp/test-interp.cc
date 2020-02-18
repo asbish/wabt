@@ -19,15 +19,15 @@
 #include "src/binary-reader.h"
 #include "src/error-formatter.h"
 
-#include "src/interp2/interp2-math.h"
-#include "src/interp2/interp2.h"
-#include "src/interp2/istream.h"
-#include "src/interp2/read-module.h"
+#include "src/interp/interp-math.h"
+#include "src/interp/interp.h"
+#include "src/interp/istream.h"
+#include "src/interp/read-module.h"
 
 using namespace wabt;
-using namespace wabt::interp2;
+using namespace wabt::interp;
 
-class Interp2Test : public ::testing::Test {
+class InterpTest : public ::testing::Test {
  public:
   virtual void SetUp() {}
   virtual void TearDown() {}
@@ -65,11 +65,11 @@ class Interp2Test : public ::testing::Test {
 };
 
 
-TEST_F(Interp2Test, Empty) {
+TEST_F(InterpTest, Empty) {
   ReadModule({0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00});
 }
 
-TEST_F(Interp2Test, MVP) {
+TEST_F(InterpTest, MVP) {
   // (module
   //   (type (;0;) (func (param i32) (result i32)))
   //   (type (;1;) (func (param f32) (result f32)))
@@ -134,7 +134,7 @@ const std::vector<u8> s_fac_module = {
 
 }  // namespace
 
-TEST_F(Interp2Test, Disassemble) {
+TEST_F(InterpTest, Disassemble) {
   ReadModule(s_fac_module);
 
   MemoryStream stream;
@@ -163,7 +163,7 @@ R"(   0| alloca 1
 )");
 }
 
-TEST_F(Interp2Test, Fac) {
+TEST_F(InterpTest, Fac) {
   ReadModule(s_fac_module);
   Instantiate();
   auto func = GetFuncExport(0);
@@ -177,7 +177,7 @@ TEST_F(Interp2Test, Fac) {
   EXPECT_EQ(120u, results[0].Get<u32>());
 }
 
-TEST_F(Interp2Test, Fac_Trace) {
+TEST_F(InterpTest, Fac_Trace) {
   ReadModule(s_fac_module);
   Instantiate();
   auto func = GetFuncExport(0);
@@ -227,7 +227,7 @@ R"(#0.    0: V:1  | alloca 1
 )");
 }
 
-TEST_F(Interp2Test, Local_Trace) {
+TEST_F(InterpTest, Local_Trace) {
   // (func (export "a")
   //   (local i32 i64 f32 f64)
   //   (local.set 0 (i32.const 0))
@@ -268,7 +268,7 @@ R"(#0.    0: V:0  | alloca 4
 )");
 }
 
-TEST_F(Interp2Test, HostFunc) {
+TEST_F(InterpTest, HostFunc) {
   // (import "" "f" (func $f (param i32) (result i32)))
   // (func (export "g") (result i32)
   //   (call $f (i32.const 1)))
@@ -298,7 +298,7 @@ TEST_F(Interp2Test, HostFunc) {
   EXPECT_EQ(2u, results[0].Get<u32>());
 }
 
-TEST_F(Interp2Test, HostFunc_PingPong) {
+TEST_F(InterpTest, HostFunc_PingPong) {
   // (import "" "f" (func $f (param i32) (result i32)))
   // (func (export "g") (param i32) (result i32)
   //   (call $f (i32.add (local.get 0) (i32.const 1))))
@@ -336,7 +336,7 @@ TEST_F(Interp2Test, HostFunc_PingPong) {
   EXPECT_EQ(11u, results[0].Get<u32>());
 }
 
-TEST_F(Interp2Test, HostFunc_PingPong_SameThread) {
+TEST_F(InterpTest, HostFunc_PingPong_SameThread) {
   // (import "" "f" (func $f (param i32) (result i32)))
   // (func (export "g") (param i32) (result i32)
   //   (call $f (i32.add (local.get 0) (i32.const 1))))
@@ -374,4 +374,176 @@ TEST_F(Interp2Test, HostFunc_PingPong_SameThread) {
   ASSERT_EQ(Result::Ok, result);
   EXPECT_EQ(1u, results.size());
   EXPECT_EQ(11u, results[0].Get<u32>());
+}
+
+TEST_F(InterpTest, HostTrap) {
+  // (import "host" "a" (func $0))
+  // (func $1 call $0)
+  // (start $1)
+  ReadModule({
+      0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x04, 0x01,
+      0x60, 0x00, 0x00, 0x02, 0x0a, 0x01, 0x04, 0x68, 0x6f, 0x73, 0x74,
+      0x01, 0x61, 0x00, 0x00, 0x03, 0x02, 0x01, 0x00, 0x08, 0x01, 0x01,
+      0x0a, 0x06, 0x01, 0x04, 0x00, 0x10, 0x00, 0x0b,
+  });
+
+  auto host_func = HostFunc::New(store_, FuncType{{}, {}},
+                                 [&](const Values& params, Values& results,
+                                     Trap::Ptr* out_trap) -> Result {
+                                   *out_trap = Trap::New(store_, "boom");
+                                   return Result::Error;
+                                 });
+
+  mod_ = Module::New(store_, module_desc_);
+  RefPtr<Trap> trap;
+  Instance::Instantiate(store_, mod_.ref(), {host_func->self()}, &trap);
+
+  ASSERT_TRUE(trap);
+  ASSERT_EQ("boom", trap->message());
+}
+
+TEST_F(InterpTest, Rot13) {
+  // (import "host" "mem" (memory $mem 1))
+  // (import "host" "fill_buf" (func $fill_buf (param i32 i32) (result i32)))
+  // (import "host" "buf_done" (func $buf_done (param i32 i32)))
+  //
+  // (func $rot13c (param $c i32) (result i32)
+  //   (local $uc i32)
+  //
+  //   ;; No change if < 'A'.
+  //   (if (i32.lt_u (get_local $c) (i32.const 65))
+  //     (return (get_local $c)))
+  //
+  //   ;; Clear 5th bit of c, to force uppercase. 0xdf = 0b11011111
+  //   (set_local $uc (i32.and (get_local $c) (i32.const 0xdf)))
+  //
+  //   ;; In range ['A', 'M'] return |c| + 13.
+  //   (if (i32.le_u (get_local $uc) (i32.const 77))
+  //     (return (i32.add (get_local $c) (i32.const 13))))
+  //
+  //   ;; In range ['N', 'Z'] return |c| - 13.
+  //   (if (i32.le_u (get_local $uc) (i32.const 90))
+  //     (return (i32.sub (get_local $c) (i32.const 13))))
+  //
+  //   ;; No change for everything else.
+  //   (return (get_local $c))
+  // )
+  //
+  // (func (export "rot13")
+  //   (local $size i32)
+  //   (local $i i32)
+  //
+  //   ;; Ask host to fill memory [0, 1024) with data.
+  //   (call $fill_buf (i32.const 0) (i32.const 1024))
+  //
+  //   ;; The host returns the size filled.
+  //   (set_local $size)
+  //
+  //   ;; Loop over all bytes and rot13 them.
+  //   (block $exit
+  //     (loop $top
+  //       ;; if (i >= size) break
+  //       (if (i32.ge_u (get_local $i) (get_local $size)) (br $exit))
+  //
+  //       ;; mem[i] = rot13c(mem[i])
+  //       (i32.store8
+  //         (get_local $i)
+  //         (call $rot13c
+  //           (i32.load8_u (get_local $i))))
+  //
+  //       ;; i++
+  //       (set_local $i (i32.add (get_local $i) (i32.const 1)))
+  //       (br $top)
+  //     )
+  //   )
+  //
+  //   (call $buf_done (i32.const 0) (get_local $size))
+  // )
+  ReadModule({
+      0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x14, 0x04, 0x60,
+      0x02, 0x7f, 0x7f, 0x01, 0x7f, 0x60, 0x02, 0x7f, 0x7f, 0x00, 0x60, 0x01,
+      0x7f, 0x01, 0x7f, 0x60, 0x00, 0x00, 0x02, 0x2d, 0x03, 0x04, 0x68, 0x6f,
+      0x73, 0x74, 0x03, 0x6d, 0x65, 0x6d, 0x02, 0x00, 0x01, 0x04, 0x68, 0x6f,
+      0x73, 0x74, 0x08, 0x66, 0x69, 0x6c, 0x6c, 0x5f, 0x62, 0x75, 0x66, 0x00,
+      0x00, 0x04, 0x68, 0x6f, 0x73, 0x74, 0x08, 0x62, 0x75, 0x66, 0x5f, 0x64,
+      0x6f, 0x6e, 0x65, 0x00, 0x01, 0x03, 0x03, 0x02, 0x02, 0x03, 0x07, 0x09,
+      0x01, 0x05, 0x72, 0x6f, 0x74, 0x31, 0x33, 0x00, 0x03, 0x0a, 0x74, 0x02,
+      0x39, 0x01, 0x01, 0x7f, 0x20, 0x00, 0x41, 0xc1, 0x00, 0x49, 0x04, 0x40,
+      0x20, 0x00, 0x0f, 0x0b, 0x20, 0x00, 0x41, 0xdf, 0x01, 0x71, 0x21, 0x01,
+      0x20, 0x01, 0x41, 0xcd, 0x00, 0x4d, 0x04, 0x40, 0x20, 0x00, 0x41, 0x0d,
+      0x6a, 0x0f, 0x0b, 0x20, 0x01, 0x41, 0xda, 0x00, 0x4d, 0x04, 0x40, 0x20,
+      0x00, 0x41, 0x0d, 0x6b, 0x0f, 0x0b, 0x20, 0x00, 0x0f, 0x0b, 0x38, 0x01,
+      0x02, 0x7f, 0x41, 0x00, 0x41, 0x80, 0x08, 0x10, 0x00, 0x21, 0x00, 0x02,
+      0x40, 0x03, 0x40, 0x20, 0x01, 0x20, 0x00, 0x4f, 0x04, 0x40, 0x0c, 0x02,
+      0x0b, 0x20, 0x01, 0x20, 0x01, 0x2d, 0x00, 0x00, 0x10, 0x02, 0x3a, 0x00,
+      0x00, 0x20, 0x01, 0x41, 0x01, 0x6a, 0x21, 0x01, 0x0c, 0x00, 0x0b, 0x0b,
+      0x41, 0x00, 0x20, 0x00, 0x10, 0x01, 0x0b,
+  });
+
+  auto host_func = HostFunc::New(
+      store_, FuncType{{ValueType::I32}, {ValueType::I32}},
+      [](const Values& params, Values& results, Trap::Ptr* out_trap) -> Result {
+        results[0] = Value(params[0].Get<u32>() + 1);
+        return Result::Ok;
+      });
+
+  std::string string_data = "Hello, WebAssembly!";
+
+  auto memory = Memory::New(store_, MemoryType{Limits{1}});
+
+  auto fill_buf = [&](const Values& params, Values& results,
+                      Trap::Ptr* out_trap) -> Result {
+    // (param $ptr i32) (param $max_size i32) (result $size i32)
+    EXPECT_EQ(2u, params.size());
+    EXPECT_EQ(1u, results.size());
+
+    u32 ptr = params[0].Get<u32>();
+    u32 max_size = params[1].Get<u32>();
+    u32 size = std::min(max_size, u32(string_data.size()));
+
+    EXPECT_LT(ptr + size, memory->ByteSize());
+
+    std::copy(string_data.begin(), string_data.begin() + size,
+              memory->UnsafeData() + ptr);
+
+    results[0].Set(size);
+    return Result::Ok;
+  };
+  auto fill_buf_func = HostFunc::New(
+      store_, FuncType{{ValueType::I32, ValueType::I32}, {ValueType::I32}},
+      fill_buf);
+
+  auto buf_done = [&](const Values& params, Values& results,
+                      Trap::Ptr* out_trap) -> Result {
+    // (param $ptr i32) (param $size i32)
+    EXPECT_EQ(2u, params.size());
+    EXPECT_EQ(0u, results.size());
+
+    u32 ptr = params[0].Get<u32>();
+    u32 size = params[1].Get<u32>();
+
+    EXPECT_LT(ptr + size, memory->ByteSize());
+
+    string_data.resize(size);
+    std::copy(memory->UnsafeData() + ptr, memory->UnsafeData() + ptr + size,
+              string_data.begin());
+
+    return Result::Ok;
+  };
+  auto buf_done_func = HostFunc::New(
+      store_, FuncType{{ValueType::I32, ValueType::I32}, {}}, buf_done);
+
+  Instantiate({memory->self(), fill_buf_func->self(), buf_done_func->self()});
+
+  auto rot13 = GetFuncExport(0);
+
+  Values results;
+  Trap::Ptr trap;
+  ASSERT_EQ(Result::Ok, rot13->Call(store_, {}, results, &trap));
+
+  EXPECT_EQ("Uryyb, JroNffrzoyl!", string_data);
+
+  ASSERT_EQ(Result::Ok, rot13->Call(store_, {}, results, &trap));
+
+  EXPECT_EQ("Hello, WebAssembly!", string_data);
 }

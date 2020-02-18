@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-#ifndef WABT_INTERP2_UTIL_H_
-#define WABT_INTERP2_UTIL_H_
+#ifndef WABT_INTERP_UTIL_H_
+#define WABT_INTERP_UTIL_H_
 
 #include <string>
 #include <vector>
 
-#include "src/interp2/interp2.h"
+#include "src/interp/interp.h"
 #include "src/string-view.h"
 
 namespace wabt {
 
 class Stream;
 
-namespace interp2 {
+namespace interp {
 
 std::string TypedValueToString(const TypedValue&);
 
@@ -44,7 +44,7 @@ void WriteCall(Stream* stream,
                const Values& results,
                const Trap::Ptr& trap);
 
-}  // namespace interp2
+}  // namespace interp
 }  // namespace wabt
 
-#endif // WABT_INTERP2_UTIL_H_
+#endif // WABT_INTERP_UTIL_H_

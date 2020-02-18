@@ -307,25 +307,16 @@ set(WABT_LIBRARY_SRC
   src/wat-writer.cc
 
   # TODO(binji): Move this into its own library?
-  src/interp/binary-reader-interp.h
-  src/interp/binary-reader-interp.cc
-  src/interp/binary-reader-metadata.h
-  src/interp/binary-reader-metadata.cc
-  src/interp/interp.h
   src/interp/interp.cc
-  src/interp/interp-disassemble.cc
-  src/interp/interp-trace.cc
-
-  src/interp2/interp2.cc
-  src/interp2/interp2-util.cc
-  src/interp2/istream.cc
-  src/interp2/read-module.cc
+  src/interp/interp-util.cc
+  src/interp/istream.cc
+  src/interp/read-module.cc
 )
 
 add_library(wabt STATIC ${WABT_LIBRARY_SRC})
 
 # libwasm, which implenents the wasm C API
-add_library(wasm SHARED ${WABT_LIBRARY_SRC} src/interp2/interp2-wasm-c-api.cc)
+add_library(wasm SHARED ${WABT_LIBRARY_SRC} src/interp/interp-wasm-c-api.cc)
 target_link_libraries(wasm wabt)
 target_include_directories(wasm PUBLIC third_party/wasm-c-api/include)
 if (COMPILER_IS_MSVC)
@@ -501,7 +492,6 @@ if (NOT EMSCRIPTEN)
     set(UNITTESTS_SRCS
       src/test-binary-reader.cc
       src/test-circular-array.cc
-      src/test-interp.cc
       src/test-intrusive-list.cc
       src/test-literal.cc
       src/test-option-parser.cc
@@ -510,7 +500,7 @@ if (NOT EMSCRIPTEN)
       src/test-utf8.cc
       src/test-wast-parser.cc
 
-      src/interp2/test-interp2.cc
+      src/interp/test-interp.cc
     )
     wabt_executable(
       NAME wabt-unittests

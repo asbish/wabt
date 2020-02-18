@@ -25,14 +25,14 @@
 #include "src/binary-reader.h"
 #include "src/error-formatter.h"
 #include "src/feature.h"
-#include "src/interp2/interp2-util.h"
-#include "src/interp2/interp2.h"
-#include "src/interp2/read-module.h"
+#include "src/interp/interp-util.h"
+#include "src/interp/interp.h"
+#include "src/interp/read-module.h"
 #include "src/option-parser.h"
 #include "src/stream.h"
 
 using namespace wabt;
-using namespace wabt::interp2;
+using namespace wabt::interp;
 
 namespace {
 

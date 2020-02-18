@@ -29,9 +29,9 @@
 #include "src/common.h"
 #include "src/error-formatter.h"
 #include "src/feature.h"
-#include "src/interp2/interp2-util.h"
-#include "src/interp2/interp2.h"
-#include "src/interp2/read-module.h"
+#include "src/interp/interp-util.h"
+#include "src/interp/interp.h"
+#include "src/interp/read-module.h"
 #include "src/literal.h"
 #include "src/option-parser.h"
 #include "src/resolve-names.h"
@@ -41,7 +41,7 @@
 #include "src/wast-parser.h"
 
 using namespace wabt;
-using namespace wabt::interp2;
+using namespace wabt::interp;
 
 static int s_verbose;
 static const char* s_infile;
@@ -891,9 +891,9 @@ class CommandRunner {
                          const Action* action,
                          RunVerbosity verbose);
 
-  interp2::Module::Ptr ReadModule(string_view module_filename, Errors* errors);
+  interp::Module::Ptr ReadModule(string_view module_filename, Errors* errors);
   Extern::Ptr GetImport(const std::string&, const std::string&);
-  void PopulateImports(const interp2::Module::Ptr&, RefVec*);
+  void PopulateImports(const interp::Module::Ptr&, RefVec*);
   void PopulateExports(const Instance::Ptr&, ExportMap*);
   bool ValuesAreEqual(TypedValue expected, TypedValue actual);
 
@@ -938,14 +938,14 @@ CommandRunner::CommandRunner() : store_(s_features) {
   // Initialize print functions for the spec test.
   struct {
     const char* name;
-    interp2::FuncType type;
+    interp::FuncType type;
   } const print_funcs[] = {
-      {"print", interp2::FuncType{{}, {}}},
-      {"print_i32", interp2::FuncType{{ValueType::I32}, {}}},
-      {"print_f32", interp2::FuncType{{ValueType::F32}, {}}},
-      {"print_f64", interp2::FuncType{{ValueType::F64}, {}}},
-      {"print_i32_f32", interp2::FuncType{{ValueType::I32, ValueType::F32}, {}}},
-      {"print_f64_f64", interp2::FuncType{{ValueType::F64, ValueType::F64}, {}}},
+      {"print", interp::FuncType{{}, {}}},
+      {"print_i32", interp::FuncType{{ValueType::I32}, {}}},
+      {"print_f32", interp::FuncType{{ValueType::F32}, {}}},
+      {"print_f64", interp::FuncType{{ValueType::F64}, {}}},
+      {"print_i32_f32", interp::FuncType{{ValueType::I32, ValueType::F32}, {}}},
+      {"print_f64_f64", interp::FuncType{{ValueType::F64, ValueType::F64}, {}}},
   };
 
   for (auto&& print : print_funcs) {
@@ -960,19 +960,18 @@ CommandRunner::CommandRunner() : store_(s_features) {
         });
   }
 
-  spectest["table"] = interp2::Table::New(
-      store_, TableType{ValueType::Funcref, Limits{10, 20}});
+  spectest["table"] =
+      interp::Table::New(store_, TableType{ValueType::Funcref, Limits{10, 20}});
 
-  spectest["memory"] =
-      interp2::Memory::New(store_, MemoryType{Limits{1, 2}});
+  spectest["memory"] = interp::Memory::New(store_, MemoryType{Limits{1, 2}});
 
-  spectest["global_i32"] = interp2::Global::New(
+  spectest["global_i32"] = interp::Global::New(
       store_, GlobalType{ValueType::I32, Mutability::Const}, Value(u32{666}));
-  spectest["global_i64"] = interp2::Global::New(
+  spectest["global_i64"] = interp::Global::New(
       store_, GlobalType{ValueType::I64, Mutability::Const}, Value(u64{666}));
-  spectest["global_f32"] = interp2::Global::New(
+  spectest["global_f32"] = interp::Global::New(
       store_, GlobalType{ValueType::F32, Mutability::Const}, Value(f32{666}));
-  spectest["global_f64"] = interp2::Global::New(
+  spectest["global_f64"] = interp::Global::New(
       store_, GlobalType{ValueType::F64, Mutability::Const}, Value(f64{666}));
 }
 
@@ -1055,7 +1054,7 @@ ActionResult CommandRunner::RunAction(int line_number,
 
   switch (action->type) {
     case ActionType::Invoke: {
-      auto* func = cast<interp2::Func>(extern_.get());
+      auto* func = cast<interp::Func>(extern_.get());
       func->Call(store_, action->args, result.values, &result.trap,
                  s_trace_stream);
       result.types = func->type().results;
@@ -1067,7 +1066,7 @@ ActionResult CommandRunner::RunAction(int line_number,
     }
 
     case ActionType::Get: {
-      auto* global = cast<interp2::Global>(extern_.get());
+      auto* global = cast<interp::Global>(extern_.get());
       result.values.push_back(global->Get());
       result.types.push_back(global->type().type);
       break;
@@ -1108,7 +1107,7 @@ Result CommandRunner::ReadInvalidTextModule(string_view module_filename,
   return result;
 }
 
-interp2::Module::Ptr CommandRunner::ReadModule(string_view module_filename,
+interp::Module::Ptr CommandRunner::ReadModule(string_view module_filename,
                                                Errors* errors) {
   std::vector<uint8_t> file_data;
 
@@ -1122,7 +1121,7 @@ interp2::Module::Ptr CommandRunner::ReadModule(string_view module_filename,
   ReadBinaryOptions options(s_features, s_log_stream.get(), kReadDebugNames,
                             kStopOnFirstError, kFailOnCustomSectionError);
   ModuleDesc module_desc;
-  if (Failed(interp2::ReadModule(file_data.data(), file_data.size(), options,
+  if (Failed(interp::ReadModule(file_data.data(), file_data.size(), options,
                                  errors, &module_desc))) {
     return {};
   }
@@ -1131,7 +1130,7 @@ interp2::Module::Ptr CommandRunner::ReadModule(string_view module_filename,
     module_desc.istream.Disassemble(s_stdout_stream.get());
   }
 
-  return interp2::Module::New(store_, module_desc);
+  return interp::Module::New(store_, module_desc);
 }
 
 Result CommandRunner::ReadInvalidModule(int line_number,
@@ -1174,7 +1173,7 @@ Extern::Ptr CommandRunner::GetImport(const std::string& module,
   return {};
 }
 
-void CommandRunner::PopulateImports(const interp2::Module::Ptr& module,
+void CommandRunner::PopulateImports(const interp::Module::Ptr& module,
                                     RefVec* imports) {
   for (auto&& import : module->desc().imports) {
     auto extern_ = GetImport(import.type.module, import.type.name);
@@ -1185,7 +1184,7 @@ void CommandRunner::PopulateImports(const interp2::Module::Ptr& module,
 void CommandRunner::PopulateExports(const Instance::Ptr& instance,
                                     ExportMap* map) {
   map->clear();
-  interp2::Module::Ptr module{store_, instance->module()};
+  interp::Module::Ptr module{store_, instance->module()};
   for (size_t i = 0; i < module->export_types().size(); ++i) {
     const ExportType& export_type = module->export_types()[i];
     (*map)[export_type.name] = store_.UnsafeGet<Extern>(instance->exports()[i]);

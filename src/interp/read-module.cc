@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-#include "src/interp2/read-module.h"
+#include "src/interp/read-module.h"
 
 #include <map>
 #include <set>
 
 #include "src/binary-reader-nop.h"
 #include "src/feature.h"
-#include "src/interp2/interp2.h"
+#include "src/interp/interp.h"
 #include "src/stream.h"
 #include "src/type-checker.h"
 
 namespace wabt {
-namespace interp2 {
+namespace interp {
 
 namespace {
 
@@ -1522,5 +1522,5 @@ Result ReadModule(const void* data,
   return ReadBinary(data, size, &reader, options);
 }
 
-}  // namespace interp2
+}  // namespace interp
 }  // namespace wabt

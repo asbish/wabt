@@ -14,30 +14,26 @@
  * limitations under the License.
  */
 
-#ifndef WABT_BINARY_READER_METADATA_H_
-#define WABT_BINARY_READER_METADATA_H_
+#ifndef WABT_READ_MODULE_H
+#define WABT_READ_MODULE_H
 
 #include "src/common.h"
 #include "src/error.h"
+#include "src/interp/interp.h"
 
 namespace wabt {
 
-namespace interp {
-
-struct ModuleMetadata;
-
-}  // namespace interp
-
 struct ReadBinaryOptions;
 
-// Reads just the binary metadata, used by C-API to get module imports names
-// (and potentially other metadata) before instantiation time.
-Result ReadBinaryMetadata(const void* data,
-                          size_t size,
-                          const ReadBinaryOptions& options,
-                          Errors*,
-                          interp::ModuleMetadata** out_metadata);
+namespace interp {
 
+Result ReadModule(const void* data,
+                  size_t size,
+                  const ReadBinaryOptions& options,
+                  Errors*,
+                  ModuleDesc* out_module);
+
+}  // namespace interp
 }  // namespace wabt
 
-#endif /* WABT_BINARY_READER_METADATA_H_ */
+#endif /* WABT_READ_MODULE_H */

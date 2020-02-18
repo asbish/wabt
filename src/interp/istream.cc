@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "src/interp2/istream.h"
+#include "src/interp/istream.h"
 
 #include <cinttypes>
 
 namespace wabt {
-namespace interp2 {
+namespace interp {
 
 template <typename T>
 void Istream::EmitAt(Offset offset, T val) {
@@ -860,5 +860,5 @@ Istream::Offset Istream::Trace(Stream* stream,
   return offset;
 }
 
-}  // namespace interp2
+}  // namespace interp
 }  // namespace wabt

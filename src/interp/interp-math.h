@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef WABT_INTERP2_MATH_H_
-#define WABT_INTERP2_MATH_H_
+#ifndef WABT_INTERP_MATH_H_
+#define WABT_INTERP_MATH_H_
 
 #include <cmath>
 #include <limits>
@@ -23,10 +23,10 @@
 #include <type_traits>
 
 #include "src/common.h"
-#include "src/interp2/interp2.h"
+#include "src/interp/interp.h"
 
 namespace wabt {
-namespace interp2 {
+namespace interp {
 
 template <
     typename T,
@@ -278,7 +278,7 @@ T IntSubSat(T lhs, T rhs) {
   return Saturate<T, U>(lhs - rhs);
 }
 
-}  // namespace interp2
+}  // namespace interp
 }  // namespace wabt
 
-#endif  // WABT_INTERP2_MATH_H_
+#endif  // WABT_INTERP_MATH_H_

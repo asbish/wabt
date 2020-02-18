@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "src/interp2/interp2-util.h"
+#include "src/interp/interp-util.h"
 
 #include <cinttypes>
 
 #include "src/stream.h"
 
 namespace wabt {
-namespace interp2 {
+namespace interp {
 
 std::string TypedValueToString(const TypedValue& tv) {
   switch (tv.type) {
@@ -113,5 +113,5 @@ void WriteCall(Stream* stream,
   }
 }
 
-}  // namespace interp2
+}  // namespace interp
 }  // namespace wabt
