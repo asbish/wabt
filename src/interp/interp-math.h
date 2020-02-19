@@ -23,6 +23,7 @@
 #include <type_traits>
 
 #if COMPILER_IS_MSVC
+#include <emmintrin.h>
 #include <immintrin.h>
 #endif
 
