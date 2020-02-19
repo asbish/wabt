@@ -164,13 +164,13 @@ template <typename T> T FloatAbs(T val);
 template <>
 inline f32 FloatAbs(f32 val) {
   return _mm_cvtss_f32(_mm_and_ps(
-      _mm_set_ps1(val), _mm_castsi128_ps(_mm_set1_epi32(0x7fffffff))));
+      _mm_set1_ps(val), _mm_castsi128_ps(_mm_set1_epi32(0x7fffffff))));
 }
 
 template <>
 inline f64 FloatAbs(f64 val) {
   return _mm_cvtsd_f64(
-      _mm_and_pd(_mm_set_pd1(val),
+      _mm_and_pd(_mm_set1_pd(val),
                  _mm_castsi128_pd(_mm_set1_epi64x(0x7fffffffffffffffull))));
 }
 
