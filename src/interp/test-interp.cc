@@ -170,7 +170,7 @@ TEST_F(InterpTest, Fac) {
 
   Values results;
   Trap::Ptr trap;
-  Result result = func->Call(store_, {Value(5)}, results, &trap);
+  Result result = func->Call(store_, {Value::Make(5)}, results, &trap);
 
   ASSERT_EQ(Result::Ok, result);
   EXPECT_EQ(1u, results.size());
@@ -185,7 +185,7 @@ TEST_F(InterpTest, Fac_Trace) {
   Values results;
   Trap::Ptr trap;
   MemoryStream stream;
-  Result result = func->Call(store_, {Value(2)}, results, &trap, &stream);
+  Result result = func->Call(store_, {Value::Make(2)}, results, &trap, &stream);
   ASSERT_EQ(Result::Ok, result);
 
   auto buf = stream.ReleaseOutputBuffer();
@@ -283,7 +283,7 @@ TEST_F(InterpTest, HostFunc) {
   auto host_func = HostFunc::New(
       store_, FuncType{{ValueType::I32}, {ValueType::I32}},
       [](const Values& params, Values& results, Trap::Ptr* out_trap) -> Result {
-        results[0] = Value(params[0].Get<u32>() + 1);
+        results[0] = Value::Make(params[0].Get<u32>() + 1);
         return Result::Ok;
       });
 
@@ -315,10 +315,10 @@ TEST_F(InterpTest, HostFunc_PingPong) {
           Trap::Ptr* out_trap) -> Result {
         auto val = params[0].Get<u32>();
         if (val < 10) {
-          return GetFuncExport(0)->Call(store_, {Value(val * 2)}, results,
+          return GetFuncExport(0)->Call(store_, {Value::Make(val * 2)}, results,
                                         out_trap);
         }
-        results[0] = Value(val);
+        results[0] = Value::Make(val);
         return Result::Ok;
       });
 
@@ -329,7 +329,7 @@ TEST_F(InterpTest, HostFunc_PingPong) {
 
   Values results;
   Trap::Ptr trap;
-  Result result = GetFuncExport(0)->Call(store_, {Value(1)}, results, &trap);
+  Result result = GetFuncExport(0)->Call(store_, {Value::Make(1)}, results, &trap);
 
   ASSERT_EQ(Result::Ok, result);
   EXPECT_EQ(1u, results.size());
@@ -355,10 +355,10 @@ TEST_F(InterpTest, HostFunc_PingPong_SameThread) {
           Trap::Ptr* out_trap) -> Result {
         auto val = params[0].Get<u32>();
         if (val < 10) {
-          return GetFuncExport(0)->Call(*thread, {Value(val * 2)}, results,
+          return GetFuncExport(0)->Call(*thread, {Value::Make(val * 2)}, results,
                                         out_trap);
         }
-        results[0] = Value(val);
+        results[0] = Value::Make(val);
         return Result::Ok;
       });
 
@@ -369,7 +369,7 @@ TEST_F(InterpTest, HostFunc_PingPong_SameThread) {
 
   Values results;
   Trap::Ptr trap;
-  Result result = GetFuncExport(0)->Call(*thread, {Value(1)}, results, &trap);
+  Result result = GetFuncExport(0)->Call(*thread, {Value::Make(1)}, results, &trap);
 
   ASSERT_EQ(Result::Ok, result);
   EXPECT_EQ(1u, results.size());
@@ -483,7 +483,7 @@ TEST_F(InterpTest, Rot13) {
   auto host_func = HostFunc::New(
       store_, FuncType{{ValueType::I32}, {ValueType::I32}},
       [](const Values& params, Values& results, Trap::Ptr* out_trap) -> Result {
-        results[0] = Value(params[0].Get<u32>() + 1);
+        results[0] = Value::Make(params[0].Get<u32>() + 1);
         return Result::Ok;
       });
 

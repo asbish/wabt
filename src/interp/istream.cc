@@ -22,7 +22,7 @@ namespace wabt {
 namespace interp {
 
 template <typename T>
-void Istream::EmitAt(Offset offset, T val) {
+void WABT_VECTORCALL Istream::EmitAt(Offset offset, T val) {
   u32 new_size = offset + sizeof(T);
   if (new_size > data_.size()) {
     data_.resize(new_size);
@@ -31,7 +31,7 @@ void Istream::EmitAt(Offset offset, T val) {
 }
 
 template <typename T>
-void Istream::EmitInternal(T val) {
+void WABT_VECTORCALL Istream::EmitInternal(T val) {
   EmitAt(end(), val);
 }
 
@@ -94,7 +94,7 @@ Istream::Offset Istream::end() const {
 }
 
 template <typename T>
-T Istream::ReadAt(Offset* offset) const {
+T WABT_VECTORCALL Istream::ReadAt(Offset* offset) const {
   assert(*offset + sizeof(T) <= data_.size());
   T result;
   memcpy(&result, data_.data() + *offset, sizeof(T));

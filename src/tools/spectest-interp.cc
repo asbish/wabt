@@ -966,13 +966,13 @@ CommandRunner::CommandRunner() : store_(s_features) {
   spectest["memory"] = interp::Memory::New(store_, MemoryType{Limits{1, 2}});
 
   spectest["global_i32"] = interp::Global::New(
-      store_, GlobalType{ValueType::I32, Mutability::Const}, Value(u32{666}));
+      store_, GlobalType{ValueType::I32, Mutability::Const}, Value::Make(u32{666}));
   spectest["global_i64"] = interp::Global::New(
-      store_, GlobalType{ValueType::I64, Mutability::Const}, Value(u64{666}));
+      store_, GlobalType{ValueType::I64, Mutability::Const}, Value::Make(u64{666}));
   spectest["global_f32"] = interp::Global::New(
-      store_, GlobalType{ValueType::F32, Mutability::Const}, Value(f32{666}));
+      store_, GlobalType{ValueType::F32, Mutability::Const}, Value::Make(f32{666}));
   spectest["global_f64"] = interp::Global::New(
-      store_, GlobalType{ValueType::F64, Mutability::Const}, Value(f64{666}));
+      store_, GlobalType{ValueType::F64, Mutability::Const}, Value::Make(f64{666}));
 }
 
 Result CommandRunner::Run(const Script& script) {
@@ -1362,26 +1362,26 @@ bool CommandRunner::ValuesAreEqual(TypedValue expected, TypedValue actual) {
   }
 }
 
-static bool IsCanonicalNan(f32 val) {
+static bool WABT_VECTORCALL IsCanonicalNan(f32 val) {
   const u32 kQuietNan = 0x7fc00000U;
   const u32 kQuietNegNan = 0xffc00000U;
   u32 bits = Bitcast<u32>(val);
   return bits == kQuietNan || bits == kQuietNegNan;
 }
 
-static bool IsCanonicalNan(f64 val) {
+static bool WABT_VECTORCALL IsCanonicalNan(f64 val) {
   const u64 kQuietNan = 0x7ff8000000000000ULL;
   const u64 kQuietNegNan = 0xfff8000000000000ULL;
   u64 bits = Bitcast<u64>(val);
   return bits == kQuietNan || bits == kQuietNegNan;
 }
 
-static bool IsArithmeticNan(f32 val) {
+static bool WABT_VECTORCALL IsArithmeticNan(f32 val) {
   const u32 kQuietNan = 0x7fc00000U;
   return (Bitcast<u32>(val) & kQuietNan) == kQuietNan;
 }
 
-static bool IsArithmeticNan(f64 val) {
+static bool WABT_VECTORCALL IsArithmeticNan(f64 val) {
   const u64 kQuietNan = 0x7ff8000000000000ULL;
   return (Bitcast<u64>(val) & kQuietNan) == kQuietNan;
 }

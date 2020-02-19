@@ -126,12 +126,12 @@ struct Istream {
 
 private:
   template <typename T>
-  void EmitAt(Offset, T val);
+  void WABT_VECTORCALL EmitAt(Offset, T val);
   template <typename T>
-  void EmitInternal(T val);
+  void WABT_VECTORCALL EmitInternal(T val);
 
   template <typename T>
-  T ReadAt(Offset*) const;
+  T WABT_VECTORCALL ReadAt(Offset*) const;
 
   Buffer data_;
 };

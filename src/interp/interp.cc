@@ -978,7 +978,7 @@ Value& Thread::Pick(Index index) {
 }
 
 template <typename T>
-T Thread::Pop() {
+T WABT_VECTORCALL Thread::Pop() {
   return Pop().Get<T>();
 }
 
@@ -992,13 +992,13 @@ Value Thread::Pop() {
 }
 
 template <typename T>
-void Thread::Push(T value) {
-  Push(Value(value));
+void WABT_VECTORCALL Thread::Push(T value) {
+  Push(Value::Make(value));
 }
 
 template <>
 void Thread::Push<bool>(bool value) {
-  Push(Value(static_cast<u32>(value ? 1 : 0)));
+  Push(Value::Make(static_cast<u32>(value ? 1 : 0)));
 }
 
 void Thread::Push(Value value) {
@@ -1007,7 +1007,7 @@ void Thread::Push(Value value) {
 
 void Thread::Push(Ref ref) {
   refs_.push_back(values_.size());
-  values_.push_back(Value(ref));
+  values_.push_back(Value::Make(ref));
 }
 
 RunResult Thread::StepInternal(Trap::Ptr* out_trap) {

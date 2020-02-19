@@ -482,21 +482,21 @@ class RefPtr {
 
 union Value {
   Value() = default;
-  explicit Value(s32);
-  explicit Value(u32);
-  explicit Value(s64);
-  explicit Value(u64);
-  explicit Value(f32);
-  explicit Value(f64);
-  explicit Value(v128);
-  explicit Value(Ref);
+  static Value WABT_VECTORCALL Make(s32);
+  static Value WABT_VECTORCALL Make(u32);
+  static Value WABT_VECTORCALL Make(s64);
+  static Value WABT_VECTORCALL Make(u64);
+  static Value WABT_VECTORCALL Make(f32);
+  static Value WABT_VECTORCALL Make(f64);
+  static Value WABT_VECTORCALL Make(v128);
+  static Value WABT_VECTORCALL Make(Ref);
   template <typename T, u8 L>
-  explicit Value(Simd<T, L>);
+  static Value WABT_VECTORCALL Make(Simd<T, L>);
 
   template <typename T>
-  T Get() const;
+  T WABT_VECTORCALL Get() const;
   template <typename T>
-  void Set(T);
+  void WABT_VECTORCALL Set(T);
 
   u32 i32_;
   u64 i64_;
@@ -752,7 +752,7 @@ class Memory : public Extern {
   template <typename T>
   Result Load(u32 offset, u32 addend, T* out) const;
   template <typename T>
-  Result Store(u32 offset, u32 addend, T);
+  Result WABT_VECTORCALL Store(u32 offset, u32 addend, T);
   Result Grow(u32 pages);
   Result Fill(u32 offset, u8 value, u32 size);
   Result Init(u32 dst_offset, const DataSegment&, u32 src_offset, u32 size);
@@ -777,7 +777,7 @@ class Memory : public Extern {
 
   // Unsafe API.
   template <typename T>
-  T UnsafeLoad(u32 offset, u32 addend) const;
+  T WABT_VECTORCALL UnsafeLoad(u32 offset, u32 addend) const;
   u8* UnsafeData();
 
   const ExternType& extern_type() override;
@@ -807,11 +807,11 @@ class Global : public Extern {
   template <typename T>
   Result Get(T* out) const;
   template <typename T>
-  Result Set(T);
+  Result WABT_VECTORCALL Set(T);
   Result Set(Store&, Ref);
 
   template <typename T>
-  T UnsafeGet() const;
+  T WABT_VECTORCALL UnsafeGet() const;
   void UnsafeSet(Value);
 
   const ExternType& extern_type() override;
@@ -1002,22 +1002,22 @@ class Thread : public Object {
   Value& Pick(Index);
 
   template <typename T>
-  T Pop();
+  T WABT_VECTORCALL Pop();
   Value Pop();
 
   template <typename T>
-  void Push(T);
+  void WABT_VECTORCALL Push(T);
   void Push(Value);
   void Push(Ref);
 
   template <typename R, typename T>
-  using UnopFunc = R(T);
+  using UnopFunc = R WABT_VECTORCALL(T);
   template <typename R, typename T>
-  using UnopTrapFunc = RunResult(T, R*, std::string*);
+  using UnopTrapFunc = RunResult WABT_VECTORCALL(T, R*, std::string*);
   template <typename R, typename T>
-  using BinopFunc = R(T, T);
+  using BinopFunc = R WABT_VECTORCALL(T, T);
   template <typename R, typename T>
-  using BinopTrapFunc = RunResult(T, T, R*, std::string*);
+  using BinopTrapFunc = RunResult WABT_VECTORCALL(T, T, R*, std::string*);
 
   template <typename R, typename T>
   RunResult DoUnop(UnopFunc<R, T>);
